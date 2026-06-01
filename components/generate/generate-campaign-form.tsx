@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { AlertCircle, Check, LayoutPanelTop, Mail, ShoppingBag, Sparkles, Target, Video, WandSparkles } from "lucide-react";
+import { AlertCircle, CalendarDays, Check, ImageIcon, LayoutPanelTop, Mail, ShoppingBag, Sparkles, Target, Video, WandSparkles } from "lucide-react";
 
 import { autoFillForm, buildReliableFormPayload, inferCTA, inferPlatforms } from "@/lib/autoFill";
 import { INITIAL_FORM_STATE, PLATFORM_LABELS } from "@/lib/constants";
@@ -113,6 +113,9 @@ function platformIcon(platform: PlatformKey) {
   if (platform === "facebook-meta-ads") return Target;
   if (platform === "product-page-copy") return ShoppingBag;
   if (platform === "email-promo") return Mail;
+  if (platform === "video-concepts") return Video;
+  if (platform === "content-calendar") return CalendarDays;
+  if (platform === "creative-prompts") return ImageIcon;
   return LayoutPanelTop;
 }
 
@@ -1992,6 +1995,9 @@ export function GenerateCampaignForm() {
                             {platform.key === "product-page-copy" && "Hero copy, bullets, and FAQs"}
                             {platform.key === "email-promo" && "Subject lines and full promo email"}
                             {platform.key === "landing-page" && "Above-fold through final CTA"}
+                            {platform.key === "video-concepts" && "Scripts, scenes, and shot lists"}
+                            {platform.key === "content-calendar" && "30 days of planned content"}
+                            {platform.key === "creative-prompts" && "Image and video AI prompts"}
                           </span>
                         </div>
                         {selected && (

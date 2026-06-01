@@ -272,6 +272,138 @@ function sanitizePlatformContent(platform: PlatformKey, value: unknown): Generat
     };
   }
 
+  if (platform === "video-concepts") {
+    const conceptsRaw = Array.isArray(raw.concepts) ? raw.concepts : [];
+    const concepts = conceptsRaw
+      .map((concept, index) => {
+        const current = concept && typeof concept === "object" ? concept as Record<string, unknown> : {};
+        const platformValue = current.platform;
+
+        const videoPlatform = (
+          platformValue === "TikTok" ||
+          platformValue === "YouTube Shorts" ||
+          platformValue === "Instagram Reels"
+            ? platformValue
+            : "TikTok"
+        ) as "TikTok" | "YouTube Shorts" | "Instagram Reels";
+
+        return {
+          title: compactString(current.title, `Video concept ${index + 1}`),
+          platform: videoPlatform,
+          hook: compactString(current.hook, "Open with the buyer's current frustration in the first 3 seconds."),
+          structure: compactStringArray(current.structure, 3, "Scene").slice(0, 6),
+          script: compactString(current.script, "Short video script focused on the core offer."),
+          brollSuggestions: compactStringArray(current.brollSuggestions, 3, "B-roll").slice(0, 6),
+          onScreenText: compactStringArray(current.onScreenText, 3, "On-screen text").slice(0, 6),
+          voiceover: compactString(current.voiceover, "Voiceover that explains the offer clearly."),
+          cta: compactString(current.cta, "Tell viewers what to do next."),
+          estimatedDuration: compactString(current.estimatedDuration, "20-35 seconds"),
+          faceless: typeof current.faceless === "boolean" ? current.faceless : true,
+        };
+      })
+      .slice(0, 3);
+
+    while (concepts.length < 3) {
+      concepts.push({
+        title: `Video concept ${concepts.length + 1}`,
+        platform: "TikTok",
+        hook: "Show the buyer's problem in the first 3 seconds.",
+        structure: ["Problem visual", "Offer reveal", "Proof", "CTA"],
+        script: "Short video script focused on the core offer.",
+        brollSuggestions: ["Product close-up", "Use case", "Result moment"],
+        onScreenText: ["Problem", "Solution", "Try it today"],
+        voiceover: "Voiceover that explains the offer clearly.",
+        cta: "Tell viewers what to do next.",
+        estimatedDuration: "20-35 seconds",
+        faceless: true,
+      });
+    }
+
+    return { concepts };
+  }
+
+  if (platform === "content-calendar") {
+    const calendarRaw = Array.isArray(raw.calendar) ? raw.calendar : [];
+    const calendar = calendarRaw
+      .map((item, index) => {
+        const current = item && typeof item === "object" ? item as Record<string, unknown> : {};
+        const day = typeof current.day === "number" ? current.day : index + 1;
+
+        return {
+          day,
+          date: compactString(current.date, `Day ${day}`),
+          platform: compactString(current.platform, "Instagram"),
+          contentType: compactString(current.contentType, "Educational"),
+          hook: compactString(current.hook, "Hook tied to the buyer's current problem."),
+          format: compactString(current.format, "Short post"),
+          notes: compactString(current.notes, "Connect this piece to the campaign strategy."),
+          hashtags: compactStringArray(current.hashtags, 0, "hashtag").slice(0, 8),
+        };
+      })
+      .slice(0, 30);
+
+    while (calendar.length < 30) {
+      const day = calendar.length + 1;
+      calendar.push({
+        day,
+        date: `Day ${day}`,
+        platform: "Instagram",
+        contentType: day % 5 === 0 ? "Promotional" : day % 3 === 0 ? "Engagement" : "Educational",
+        hook: "Hook tied to the buyer's current problem.",
+        format: "Short post",
+        notes: "Connect this piece to the campaign strategy.",
+        hashtags: [],
+      });
+    }
+
+    return { calendar };
+  }
+
+  if (platform === "creative-prompts") {
+    const normalizePrompt = (item: unknown, index: number) => {
+      const current = item && typeof item === "object" ? item as Record<string, unknown> : {};
+      return {
+        purpose: compactString(current.purpose, `Creative asset ${index + 1}`),
+        prompt: compactString(current.prompt, "Commercial product marketing visual with clear composition and strong lighting."),
+        negativePrompt: compactString(current.negativePrompt, "blurry, low quality, distorted text, cluttered composition"),
+        dimensions: compactString(current.dimensions, "1:1"),
+        style: compactString(current.style, "Clean commercial"),
+      };
+    };
+    const normalizeVideoPrompt = (item: unknown, index: number) => {
+      const current = item && typeof item === "object" ? item as Record<string, unknown> : {};
+      return {
+        purpose: compactString(current.purpose, `Video asset ${index + 1}`),
+        prompt: compactString(current.prompt, "Short commercial video prompt with product reveal and clear motion."),
+        duration: compactString(current.duration, "6 seconds"),
+        style: compactString(current.style, "Clean commercial"),
+      };
+    };
+    const normalizeThumbnailPrompt = (item: unknown, index: number) => {
+      const current = item && typeof item === "object" ? item as Record<string, unknown> : {};
+      return {
+        purpose: compactString(current.purpose, `Thumbnail ${index + 1}`),
+        prompt: compactString(current.prompt, "High-converting thumbnail with clear subject, readable negative space, and strong contrast."),
+      };
+    };
+
+    const imagePrompts = (Array.isArray(raw.imagePrompts) ? raw.imagePrompts : [])
+      .map(normalizePrompt)
+      .slice(0, 5);
+    const videoPrompts = (Array.isArray(raw.videoPrompts) ? raw.videoPrompts : [])
+      .map(normalizeVideoPrompt)
+      .slice(0, 3);
+    const thumbnailPrompts = (Array.isArray(raw.thumbnailPrompts) ? raw.thumbnailPrompts : [])
+      .map(normalizeThumbnailPrompt)
+      .slice(0, 3);
+
+    while (imagePrompts.length < 5) imagePrompts.push(normalizePrompt(null, imagePrompts.length));
+    while (videoPrompts.length < 3) videoPrompts.push(normalizeVideoPrompt(null, videoPrompts.length));
+    while (thumbnailPrompts.length < 3) thumbnailPrompts.push(normalizeThumbnailPrompt(null, thumbnailPrompts.length));
+
+    return { imagePrompts, videoPrompts, thumbnailPrompts };
+  }
+
   const aboveFold = raw.aboveFold && typeof raw.aboveFold === "object" ? raw.aboveFold as Record<string, unknown> : {};
   const problemSection = raw.problemSection && typeof raw.problemSection === "object" ? raw.problemSection as Record<string, unknown> : {};
   const solutionSection = raw.solutionSection && typeof raw.solutionSection === "object" ? raw.solutionSection as Record<string, unknown> : {};

@@ -12,6 +12,8 @@ import { PLATFORM_LABELS } from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   CampaignAnalysis,
+  ContentCalendarContent,
+  CreativePromptsContent,
   CampaignRecord,
   EmailContent,
   FacebookAdsContent,
@@ -22,6 +24,7 @@ import {
   SaveCampaignRequestBody,
   StrategyBrief,
   TikTokContent,
+  VideoConceptsContent,
 } from "@/lib/types";
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -425,6 +428,117 @@ const LandingPageRenderer = memo(function LandingPageRenderer({
   );
 });
 
+const VideoConceptsRenderer = memo(function VideoConceptsRenderer({
+  data, onCopy, copyState,
+}: { data: VideoConceptsContent; onCopy: (l: string, v: string) => void; copyState: string | null }) {
+  return (
+    <>
+      {data.concepts.map((concept, index) => {
+        const copyText = [
+          `TITLE\n${concept.title}`,
+          `PLATFORM\n${concept.platform}`,
+          `HOOK\n${concept.hook}`,
+          `STRUCTURE\n${concept.structure.map((item, i) => `${i + 1}. ${item}`).join("\n")}`,
+          `SCRIPT\n${concept.script}`,
+          `B-ROLL\n${concept.brollSuggestions.join("\n")}`,
+          `ON-SCREEN TEXT\n${concept.onScreenText.join("\n")}`,
+          `VOICEOVER\n${concept.voiceover}`,
+          `CTA\n${concept.cta}`,
+          `DURATION\n${concept.estimatedDuration}`,
+          `FACELESS\n${concept.faceless ? "Yes" : "No"}`,
+        ].join("\n\n");
+
+        return (
+          <ContentCard key={concept.title} title={`Video Concept ${index + 1}`} copyText={copyText} onCopy={onCopy} copyState={copyState}>
+            <details open={index === 0}>
+              <summary style={{ cursor: "pointer", fontWeight: 700, color: "#111827", marginBottom: "10px" }}>
+                {concept.title} · {concept.platform}
+              </summary>
+              <div className="script-block"><p className="script-block-label">First 3 Seconds</p><p className="script-block-text">{concept.hook}</p></div>
+              <div className="script-block"><p className="script-block-label">Structure</p>{concept.structure.map((item, i) => <div key={item} className="proof-item"><span className="proof-dot" /><span>{i + 1}. {item}</span></div>)}</div>
+              <div className="script-block"><p className="script-block-label">Script</p><p className="script-block-text" style={{ whiteSpace: "pre-wrap" }}>{concept.script}</p></div>
+              <div className="script-block"><p className="script-block-label">B-roll</p><p className="script-block-text">{concept.brollSuggestions.join(" · ")}</p></div>
+              <div className="script-block"><p className="script-block-label">On-Screen Text</p><p className="script-block-text">{concept.onScreenText.join(" · ")}</p></div>
+              <div className="script-block"><p className="script-block-label">Voiceover</p><p className="script-block-text">{concept.voiceover}</p></div>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <span className="badge badge-blue">{concept.cta}</span>
+                <span className="badge badge-neutral">{concept.estimatedDuration}</span>
+                <span className="badge badge-neutral">{concept.faceless ? "Faceless" : "On-camera"}</span>
+              </div>
+            </details>
+          </ContentCard>
+        );
+      })}
+    </>
+  );
+});
+
+const ContentCalendarRenderer = memo(function ContentCalendarRenderer({
+  data, onCopy, copyState,
+}: { data: ContentCalendarContent; onCopy: (l: string, v: string) => void; copyState: string | null }) {
+  const copyText = data.calendar
+    .map((item) => `${item.day},${item.date},${item.platform},${item.contentType},"${item.hook}","${item.notes}","${item.hashtags.join(" ")}"`)
+    .join("\n");
+
+  return (
+    <ContentCard title="30-Day Content Calendar" copyText={copyText} onCopy={onCopy} copyState={copyState}>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+          <thead>
+            <tr style={{ textAlign: "left", color: "#475569" }}>
+              {["Day", "Platform", "Type", "Hook", "Format"].map((heading) => (
+                <th key={heading} style={{ padding: "8px", borderBottom: "1px solid #E5E7EB" }}>{heading}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.calendar.map((item) => (
+              <tr key={`${item.day}-${item.hook}`}>
+                <td style={{ padding: "10px 8px", borderBottom: "1px solid #F3F4F6", fontWeight: 700 }}>{item.day}</td>
+                <td style={{ padding: "10px 8px", borderBottom: "1px solid #F3F4F6" }}>{item.platform}</td>
+                <td style={{ padding: "10px 8px", borderBottom: "1px solid #F3F4F6" }}>{item.contentType}</td>
+                <td style={{ padding: "10px 8px", borderBottom: "1px solid #F3F4F6", minWidth: "240px" }}>{item.hook}</td>
+                <td style={{ padding: "10px 8px", borderBottom: "1px solid #F3F4F6" }}>{item.format}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </ContentCard>
+  );
+});
+
+const CreativePromptsRenderer = memo(function CreativePromptsRenderer({
+  data, onCopy, copyState,
+}: { data: CreativePromptsContent; onCopy: (l: string, v: string) => void; copyState: string | null }) {
+  const groups = [
+    ["Image Prompts", data.imagePrompts],
+    ["Video Prompts", data.videoPrompts],
+    ["Thumbnail Prompts", data.thumbnailPrompts],
+  ] as const;
+
+  return (
+    <>
+      {groups.map(([title, prompts]) => (
+        <ContentCard key={title} title={title} copyText={prompts.map((item) => `${item.purpose}\n${item.prompt}`).join("\n\n---\n\n")} onCopy={onCopy} copyState={copyState}>
+          {prompts.map((item, index) => (
+            <div key={`${title}-${index}`} style={{ marginBottom: index < prompts.length - 1 ? "12px" : 0 }}>
+              <p className="script-block-label">{item.purpose}</p>
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", background: "#0F172A", color: "#E2E8F0", borderRadius: "8px", padding: "12px", fontSize: "12px", lineHeight: 1.6 }}>
+                {"negativePrompt" in item
+                  ? `${item.prompt}\n\nNegative: ${item.negativePrompt}\nDimensions: ${item.dimensions}\nStyle: ${item.style}`
+                  : "duration" in item
+                    ? `${item.prompt}\n\nDuration: ${item.duration}\nStyle: ${item.style}`
+                    : item.prompt}
+              </pre>
+            </div>
+          ))}
+        </ContentCard>
+      ))}
+    </>
+  );
+});
+
 // ─── Platform dispatcher ──────────────────────────────────────────────────────
 
 const PlatformRenderer = memo(function PlatformRenderer({
@@ -459,6 +573,15 @@ const PlatformRenderer = memo(function PlatformRenderer({
   }
   if (platform === "email-promo") {
     return <EmailRenderer data={content as EmailContent} onCopy={onCopy} copyState={copyState} />;
+  }
+  if (platform === "video-concepts") {
+    return <VideoConceptsRenderer data={content as VideoConceptsContent} onCopy={onCopy} copyState={copyState} />;
+  }
+  if (platform === "content-calendar") {
+    return <ContentCalendarRenderer data={content as ContentCalendarContent} onCopy={onCopy} copyState={copyState} />;
+  }
+  if (platform === "creative-prompts") {
+    return <CreativePromptsRenderer data={content as CreativePromptsContent} onCopy={onCopy} copyState={copyState} />;
   }
   return <LandingPageRenderer data={content as LandingPageContent} onCopy={onCopy} copyState={copyState} />;
 });

@@ -121,4 +121,75 @@ export const PLATFORM_CONFIG: Record<
   finalCta: { headline: string, button: string, urgency: string }
 }`,
   },
+  "video-concepts": {
+    name: "Video Concepts",
+    systemPrompt: `You are a video content strategist and scriptwriter who has produced 1,000+ high-performing TikTok, YouTube, and Instagram videos. You understand that the first 3 seconds determine everything. You create video concepts that are visually compelling, emotionally resonant, and designed to drive action — not just views. You know how to make faceless videos that convert without showing a face.`,
+    instructions:
+      "3 video concepts with platform, first-three-second hook, structure, script, B-roll, on-screen text, voiceover, CTA, duration, and whether it can be faceless.",
+    schema: `{
+  concepts: [
+    {
+      title: string,
+      platform: "TikTok" | "YouTube Shorts" | "Instagram Reels",
+      hook: string,
+      structure: [string],
+      script: string,
+      brollSuggestions: [string],
+      onScreenText: [string],
+      voiceover: string,
+      cta: string,
+      estimatedDuration: string,
+      faceless: boolean
+    }
+  ] (3 concepts)
+}`,
+  },
+  "content-calendar": {
+    name: "30-Day Content Calendar",
+    systemPrompt: `You are a social media strategist who creates data-driven content calendars that build audiences and drive sales. You know how to balance educational content (60%), engagement content (20%), and promotional content (20%). You create variety — not repetition. Every piece of content serves a specific purpose in the customer journey.`,
+    instructions:
+      "a 30-day content calendar with day, date, platform, content type, hook, format, notes, and hashtags.",
+    schema: `{
+  calendar: [
+    {
+      day: number,
+      date: string,
+      platform: string,
+      contentType: string,
+      hook: string,
+      format: string,
+      notes: string,
+      hashtags: [string]
+    }
+  ] (30 days)
+}`,
+  },
+  "creative-prompts": {
+    name: "Creative Prompts",
+    systemPrompt: `You are a creative director and prompt engineer who specializes in generating AI image and video prompts for marketing assets. You understand composition, lighting, color theory, and what makes a visual asset convert. You write prompts that work with Midjourney, DALL-E 3, Flux, and Sora. You are specific, visual, and commercial.`,
+    instructions:
+      "5 image prompts, 3 video prompts, and 3 thumbnail prompts for commercial marketing assets.",
+    schema: `{
+  imagePrompts: [
+    {
+      purpose: string,
+      prompt: string,
+      negativePrompt: string,
+      dimensions: string,
+      style: string
+    }
+  ] (5 prompts),
+  videoPrompts: [
+    {
+      purpose: string,
+      prompt: string,
+      duration: string,
+      style: string
+    }
+  ] (3 prompts),
+  thumbnailPrompts: [
+    { purpose: string, prompt: string }
+  ] (3 prompts)
+}`,
+  },
 };

@@ -29,6 +29,9 @@ export const platformOptions = [
   { key: "product-page-copy", label: "Product Page Copy" },
   { key: "email-promo", label: "Email Promo" },
   { key: "landing-page", label: "Landing Page" },
+  { key: "video-concepts", label: "Video Concepts", description: "Scripts, scenes, shot lists" },
+  { key: "content-calendar", label: "30-Day Calendar", description: "Full month of content planned" },
+  { key: "creative-prompts", label: "Creative Prompts", description: "Image and video AI prompts" },
 ] as const;
 
 export type OfferCategory = (typeof categoryOptions)[number];
@@ -141,12 +144,64 @@ export interface LandingPageContent {
   finalCta: { headline: string; button: string; urgency: string };
 }
 
+export interface VideoConceptsContent {
+  concepts: {
+    title: string;
+    platform: "TikTok" | "YouTube Shorts" | "Instagram Reels";
+    hook: string;
+    structure: string[];
+    script: string;
+    brollSuggestions: string[];
+    onScreenText: string[];
+    voiceover: string;
+    cta: string;
+    estimatedDuration: string;
+    faceless: boolean;
+  }[];
+}
+
+export interface ContentCalendarContent {
+  calendar: {
+    day: number;
+    date: string;
+    platform: string;
+    contentType: string;
+    hook: string;
+    format: string;
+    notes: string;
+    hashtags: string[];
+  }[];
+}
+
+export interface CreativePromptsContent {
+  imagePrompts: {
+    purpose: string;
+    prompt: string;
+    negativePrompt: string;
+    dimensions: string;
+    style: string;
+  }[];
+  videoPrompts: {
+    purpose: string;
+    prompt: string;
+    duration: string;
+    style: string;
+  }[];
+  thumbnailPrompts: {
+    purpose: string;
+    prompt: string;
+  }[];
+}
+
 export interface GeneratedContent {
   "tiktok-reels"?: TikTokContent;
   "facebook-meta-ads"?: FacebookAdsContent;
   "product-page-copy"?: ProductPageContent;
   "email-promo"?: EmailContent;
   "landing-page"?: LandingPageContent;
+  "video-concepts"?: VideoConceptsContent;
+  "content-calendar"?: ContentCalendarContent;
+  "creative-prompts"?: CreativePromptsContent;
 }
 
 export interface GenerationIssue {
