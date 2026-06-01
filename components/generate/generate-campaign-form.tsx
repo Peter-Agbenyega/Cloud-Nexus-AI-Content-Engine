@@ -91,6 +91,16 @@ interface UrlExtractResponse {
   error?: string;
 }
 
+interface BrandProfile {
+  id: string;
+  name: string;
+  industry?: string | null;
+  target_audience?: string | null;
+  brand_voice?: string[] | null;
+  preferred_cta?: string | null;
+  color_notes?: string | null;
+}
+
 function platformIcon(platform: PlatformKey) {
   if (platform === "tiktok-reels") return Video;
   if (platform === "facebook-meta-ads") return Target;
@@ -564,6 +574,12 @@ export function GenerateCampaignForm() {
   const [urlInput, setUrlInput] = useState("");
   const [urlExtractState, setUrlExtractState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [urlExtractMessage, setUrlExtractMessage] = useState("");
+  const [brands, setBrands] = useState<BrandProfile[]>([]);
+  const [selectedBrandId, setSelectedBrandId] = useState("");
+  const [brandModalOpen, setBrandModalOpen] = useState(false);
+  const [brandSaveName, setBrandSaveName] = useState("");
+  const [brandSaveError, setBrandSaveError] = useState("");
+  const [brandSaveBusy, setBrandSaveBusy] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Partial<Record<FormFieldKey, boolean>>>({});
   const [transitionDirection, setTransitionDirection] = useState<"forward" | "backward">("forward");
@@ -968,6 +984,84 @@ export function GenerateCampaignForm() {
   }, []);
 
   useEffect(() => {
+    let ignore = false;
+
+    async function loadBrands() {
+      try {
+        const response = await fetch("/api/brands");
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!ignore) {
+          setBrands(data.brands ?? []);
+        }
+      } catch {
+        if (!ignore) setBrands([]);
+      }
+    }
+
+    void loadBrands();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const applyBrandProfile = (brandId: string) => {
+    setSelectedBrandId(brandId);
+    const brand = brands.find((item) => item.id === brandId);
+    if (!brand) return;
+
+    const firstVoice = brand.brand_voice?.[0];
+    const brandTone = brandToneOptions.find((option) => option === firstVoice) ?? form.brandTone;
+    const preferredCta = primaryCtaOptions.find((option) => option === brand.preferred_cta) ?? form.primaryCta;
+
+    setForm((current) => autoFillForm({
+      ...current,
+      targetAudience: brand.target_audience || current.targetAudience,
+      brandTone,
+      primaryCta: preferredCta,
+    }));
+    setAssistMessage(`Applied ${brand.name}. Review the pre-filled audience and tone below.`);
+  };
+
+  const saveCurrentAsBrand = async () => {
+    const name = brandSaveName.trim() || form.offerName.trim();
+    if (!name) {
+      setBrandSaveError("Add a brand name before saving.");
+      return;
+    }
+
+    setBrandSaveBusy(true);
+    setBrandSaveError("");
+
+    try {
+      const response = await fetch("/api/brands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          industry: form.category,
+          target_audience: form.targetAudience,
+          brand_voice: [form.brandTone],
+          approved_claims: form.socialProof ? [form.socialProof] : [],
+          preferred_cta: form.primaryCta,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not save brand profile.");
+      setBrands((current) => [data.brand, ...current]);
+      setSelectedBrandId(data.brand.id);
+      setBrandModalOpen(false);
+      setBrandSaveName("");
+      showToast("Brand profile saved.", "success");
+    } catch (error) {
+      setBrandSaveError(error instanceof Error ? error.message : "Could not save brand profile.");
+    } finally {
+      setBrandSaveBusy(false);
+    }
+  };
+
+  useEffect(() => {
     const offerName = form.offerName.trim();
     const description = form.description.trim();
     const hasEnoughSignal = offerName.length >= 4 || description.length >= 12;
@@ -1289,6 +1383,33 @@ export function GenerateCampaignForm() {
         />
 
         <div ref={formStartRef} />
+
+        {brands.length > 0 && (
+          <div className="assist-panel" style={{ marginBottom: "20px" }}>
+            <div style={{ flex: 1 }}>
+              <p className="assist-title">
+                <Sparkles style={{ width: "14px", height: "14px" }} aria-hidden="true" />
+                Brand memory
+              </p>
+              <p className="assist-copy">
+                Select a saved brand to pre-fill audience and voice.
+              </p>
+            </div>
+            <select
+              value={selectedBrandId}
+              onChange={(event) => applyBrandProfile(event.target.value)}
+              className="input select-input"
+              style={{ minWidth: "220px", maxWidth: "320px" }}
+              aria-label="Saved brand profile"
+            >
+              <option value="">Choose brand</option>
+              {brands.map((brand) => (
+                <option key={brand.id} value={brand.id}>{brand.name}</option>
+              ))}
+            </select>
+            <Link href="/brands" className="btn-ghost">Manage</Link>
+          </div>
+        )}
 
         <div
           style={{
@@ -1863,9 +1984,71 @@ export function GenerateCampaignForm() {
                 ]}
                 onEdit={() => goToStep(3)}
               />
+              <div className="callout callout-subtle">
+                <span className="callout-label">Brand memory</span>
+                <p className="callout-copy">
+                  Save this audience, tone, proof, and CTA as a reusable brand profile.
+                </p>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setBrandSaveName(form.offerName);
+                    setBrandSaveError("");
+                    setBrandModalOpen(true);
+                  }}
+                  style={{ marginTop: "12px" }}
+                >
+                  + Save as brand
+                </button>
+              </div>
             </div>
           )}
         </div>
+
+        {brandModalOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="save-brand-title"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 50,
+              background: "rgba(15,23,42,0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+            }}
+          >
+            <div style={{ width: "100%", maxWidth: "460px", background: "white", borderRadius: "8px", padding: "22px", boxShadow: "0 24px 70px rgba(15,23,42,0.22)" }}>
+              <h2 id="save-brand-title" style={{ margin: "0 0 8px", fontSize: "20px" }}>Save Brand Profile</h2>
+              <p style={{ margin: "0 0 16px", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
+                This saves the current audience, tone, proof, and CTA for future campaigns.
+              </p>
+              <input
+                className="input"
+                value={brandSaveName}
+                onChange={(event) => setBrandSaveName(event.target.value)}
+                placeholder="Brand name"
+              />
+              {brandSaveError && (
+                <p role="alert" style={{ margin: "10px 0 0", color: "var(--color-error)", fontSize: "13px" }}>
+                  {brandSaveError}
+                </p>
+              )}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "18px" }}>
+                <button type="button" className="btn-ghost" onClick={() => setBrandModalOpen(false)} disabled={brandSaveBusy}>
+                  Cancel
+                </button>
+                <button type="button" className="btn-primary" onClick={() => void saveCurrentAsBrand()} disabled={brandSaveBusy}>
+                  {brandSaveBusy ? "Saving..." : "Save Brand"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="card live-preview" style={{ marginTop: "24px" }}>
           <p className="lbl" style={{ marginBottom: "10px" }}>Live Preview</p>

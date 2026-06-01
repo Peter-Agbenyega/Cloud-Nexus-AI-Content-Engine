@@ -41,5 +41,8 @@ export const config = {
     "/api/assist",
     "/api/ideas",
     "/api/extract-url",
+    "/api/brands",
+    "/api/brands/:path*",
+    "/brands",
   ],
 };
