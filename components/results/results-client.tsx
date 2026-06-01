@@ -6,7 +6,13 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Download, Loader2, RefreshCcw, Save } from "lucide-react";
 
 import { analyzeCampaign } from "@/lib/analysis";
-import { buildCampaignExport } from "@/lib/export";
+import {
+  exportAsContentCalendar,
+  exportAsMetaAds,
+  exportAsPDF,
+  exportAsText,
+  getExportFilename,
+} from "@/lib/export";
 import { calculateCommerceScores } from "@/lib/commerce-score";
 import { PLATFORM_LABELS } from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -618,6 +624,7 @@ export function ResultsClient({ campaignId }: { campaignId: string }) {
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const [actionState, setActionState] = useState<"idle" | "saving" | "regenerating">("idle");
   const [copyState, setCopyState] = useState<string | null>(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   function showToast(message: string, type: ToastType = "info") {
@@ -692,16 +699,44 @@ export function ResultsClient({ campaignId }: { campaignId: string }) {
     }
   }
 
-  function handleExport() {
-    if (!campaign) return;
-    const text = buildCampaignExport(campaign);
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  function downloadBlob(blob: Blob, filename: string) {
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${campaign.title.toLowerCase().replace(/\s+/g, "-")}-campaign-pack.txt`;
-    a.click();
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
     URL.revokeObjectURL(url);
+  }
+
+  function handleExport(format: "pdf" | "txt" | "csv" | "meta") {
+    if (!campaign) return;
+    setExportMenuOpen(false);
+
+    if (format === "pdf") {
+      downloadBlob(exportAsPDF(campaign), getExportFilename(campaign, "pdf"));
+      return;
+    }
+
+    if (format === "csv") {
+      downloadBlob(
+        new Blob([exportAsContentCalendar(campaign)], { type: "text/csv;charset=utf-8" }),
+        getExportFilename(campaign, "csv"),
+      );
+      return;
+    }
+
+    if (format === "meta") {
+      downloadBlob(
+        new Blob([exportAsMetaAds(campaign)], { type: "text/plain;charset=utf-8" }),
+        getExportFilename(campaign, "meta-ads.txt"),
+      );
+      return;
+    }
+
+    downloadBlob(
+      new Blob([exportAsText(campaign)], { type: "text/plain;charset=utf-8" }),
+      getExportFilename(campaign, "txt"),
+    );
   }
 
   async function getAccessToken() {
@@ -958,10 +993,31 @@ export function ResultsClient({ campaignId }: { campaignId: string }) {
           </div>
 
           <div className="results-actions">
-            <button type="button" onClick={handleExport} className="btn-secondary" style={{ width: "100%", justifyContent: "center", minHeight: "44px" }}>
-              <Download style={{ width: "14px", height: "14px" }} aria-hidden="true" />
-              Export Campaign Pack
-            </button>
+            <div style={{ position: "relative" }}>
+              <button type="button" onClick={() => setExportMenuOpen((value) => !value)} className="btn-secondary" style={{ width: "100%", justifyContent: "center", minHeight: "44px" }} aria-expanded={exportMenuOpen}>
+                <Download style={{ width: "14px", height: "14px" }} aria-hidden="true" />
+                Export Campaign Pack ↓
+              </button>
+              {exportMenuOpen && (
+                <div style={{ position: "absolute", top: "48px", left: 0, right: 0, zIndex: 20, background: "white", border: "1px solid var(--color-border-light)", borderRadius: "8px", boxShadow: "0 14px 28px rgba(15,23,42,0.12)", overflow: "hidden" }}>
+                  {[
+                    ["Download PDF (full campaign pack)", "pdf"],
+                    ["Download Text Bundle (.txt)", "txt"],
+                    ["Download Content Calendar (.csv)", "csv"],
+                    ["Download Meta Ads Format (.txt)", "meta"],
+                  ].map(([label, format]) => (
+                    <button
+                      key={format}
+                      type="button"
+                      onClick={() => handleExport(format as "pdf" | "txt" | "csv" | "meta")}
+                      style={{ width: "100%", textAlign: "left", padding: "11px 12px", border: "none", background: "white", cursor: "pointer", fontSize: "13px", color: "#334155" }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button type="button" onClick={() => void handleSave()} disabled={isBusy} className="btn-secondary" style={{ width: "100%", justifyContent: "center", minHeight: "44px" }}>
               {actionState === "saving" ? <span className="spinner spinner-gray" aria-hidden="true" /> : <Save style={{ width: "14px", height: "14px" }} aria-hidden="true" />}
               Save to Dashboard

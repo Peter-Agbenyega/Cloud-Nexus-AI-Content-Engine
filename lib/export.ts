@@ -1,43 +1,177 @@
-import { PLATFORM_LABELS } from "@/lib/constants";
-import { CampaignRecord, PlatformKey } from "@/lib/types";
+import { jsPDF } from "jspdf";
 
-export function buildCampaignExport(record: CampaignRecord) {
+import { PLATFORM_LABELS } from "@/lib/constants";
+import {
+  CampaignRecord,
+  ContentCalendarContent,
+  FacebookAdsContent,
+  PlatformKey,
+} from "@/lib/types";
+
+type Campaign = CampaignRecord;
+
+function stringifyContent(value: unknown) {
+  return JSON.stringify(value, null, 2);
+}
+
+function cleanSlug(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "campaign";
+}
+
+function csvCell(value: unknown) {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+export function exportAsPDF(campaign: Campaign): Blob {
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const margin = 48;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  let y = margin;
+
+  function addFooter() {
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text("Cloud Nexus AI Studio", margin, pageHeight - 24);
+  }
+
+  function addText(text: string, size = 10, bold = false) {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(size);
+    doc.setTextColor(20);
+    const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
+    lines.forEach((line: string) => {
+      if (y > pageHeight - 56) {
+        addFooter();
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, margin, y);
+      y += size + 5;
+    });
+    y += 6;
+  }
+
+  addText(campaign.title, 24, true);
+  addText(`Campaign Pack · ${new Date(campaign.created_at).toLocaleDateString()}`, 12);
+  y += 18;
+
+  addText("Offer Brief", 16, true);
+  addText(`Offer: ${campaign.offer_data.offerName}`);
+  addText(`Category: ${campaign.offer_data.category}`);
+  addText(`Price: $${campaign.offer_data.price}`);
+  addText(`Audience: ${campaign.offer_data.targetAudience}`);
+  addText(`Description: ${campaign.offer_data.description}`);
+
+  addText("Strategy Brief", 16, true);
+  addText(campaign.strategy_brief.positioningSummary);
+  addText(`Primary hook: ${campaign.strategy_brief.primaryEmotionalHook}`);
+  addText(`Recommended CTA: ${campaign.strategy_brief.recommendedCTA}`);
+
+  Object.entries(campaign.generated_content).forEach(([platform, content]) => {
+    addText(PLATFORM_LABELS[platform as PlatformKey] ?? platform, 16, true);
+    addText(stringifyContent(content), 9);
+  });
+
+  addFooter();
+  return doc.output("blob");
+}
+
+export function exportAsText(campaign: Campaign): string {
   const sections = [
-    `CNACE Campaign Pack`,
-    ``,
-    `Campaign: ${record.title}`,
-    `Created: ${new Date(record.created_at).toLocaleString()}`,
-    ``,
-    `=== Offer Brief ===`,
-    `Offer: ${record.offer_data.offerName}`,
-    `Category: ${record.offer_data.category}`,
-    `Price: $${record.offer_data.price}`,
-    `Description: ${record.offer_data.description}`,
-    `Audience: ${record.offer_data.targetAudience}`,
-    `Pain Point: ${record.offer_data.painPoint}`,
-    `Benefits: ${record.offer_data.benefits.join(" | ")}`,
-    `Social Proof: ${record.offer_data.socialProof || "None provided"}`,
-    `Primary CTA: ${record.offer_data.primaryCta}`,
-    `Brand Tone: ${record.offer_data.brandTone}`,
-    `Platforms: ${record.offer_data.platforms.map((platform) => PLATFORM_LABELS[platform]).join(", ")}`,
-    ``,
-    `=== Strategy Brief ===`,
-    JSON.stringify(record.strategy_brief, null, 2),
-    ``,
-    `=== Commerce Scores ===`,
-    JSON.stringify(record.commerce_scores, null, 2),
-    ``,
-    `=== Generated Content ===`,
+    "Cloud Nexus AI Studio Campaign Pack",
+    "",
+    `Campaign: ${campaign.title}`,
+    `Created: ${new Date(campaign.created_at).toLocaleString()}`,
+    "",
+    "=== Offer Brief ===",
+    `Offer: ${campaign.offer_data.offerName}`,
+    `Category: ${campaign.offer_data.category}`,
+    `Price: $${campaign.offer_data.price}`,
+    `Description: ${campaign.offer_data.description}`,
+    `Audience: ${campaign.offer_data.targetAudience}`,
+    `Pain Point: ${campaign.offer_data.painPoint}`,
+    `Benefits: ${campaign.offer_data.benefits.join(" | ")}`,
+    `Social Proof: ${campaign.offer_data.socialProof || "None provided"}`,
+    `Primary CTA: ${campaign.offer_data.primaryCta}`,
+    `Brand Tone: ${campaign.offer_data.brandTone}`,
+    `Platforms: ${campaign.offer_data.platforms.map((platform) => PLATFORM_LABELS[platform]).join(", ")}`,
+    "",
+    "=== Strategy Brief ===",
+    stringifyContent(campaign.strategy_brief),
+    "",
+    "=== Commerce Scores ===",
+    stringifyContent(campaign.commerce_scores),
+    "",
+    "=== Generated Content ===",
   ];
 
-  for (const [platform, content] of Object.entries(record.generated_content) as [
+  for (const [platform, content] of Object.entries(campaign.generated_content) as [
     PlatformKey,
     unknown,
   ][]) {
     sections.push(`-- ${PLATFORM_LABELS[platform]} --`);
-    sections.push(JSON.stringify(content, null, 2));
-    sections.push(``);
+    sections.push(stringifyContent(content));
+    sections.push("");
   }
 
   return sections.join("\n");
 }
+
+export function exportAsContentCalendar(campaign: Campaign): string {
+  const calendar = campaign.generated_content["content-calendar"] as ContentCalendarContent | undefined;
+  const rows = ["Day,Date,Platform,Content Type,Hook,Notes,Hashtags"];
+
+  if (!calendar?.calendar?.length) {
+    return rows.join("\n");
+  }
+
+  calendar.calendar.forEach((item) => {
+    rows.push([
+      item.day,
+      csvCell(item.date),
+      csvCell(item.platform),
+      csvCell(item.contentType),
+      csvCell(item.hook),
+      csvCell(item.notes),
+      csvCell(item.hashtags.join(" ")),
+    ].join(","));
+  });
+
+  return rows.join("\n");
+}
+
+export function exportAsMetaAds(campaign: Campaign): string {
+  const ads = campaign.generated_content["facebook-meta-ads"] as FacebookAdsContent | undefined;
+  const sections = [`Campaign Name: ${campaign.title}`, ""];
+
+  if (!ads?.variants?.length) {
+    sections.push("No Facebook/Meta ad variants found.");
+    return sections.join("\n");
+  }
+
+  ads.variants.forEach((variant, index) => {
+    sections.push(`Ad Set Name: ${campaign.title} - Set ${index + 1}`);
+    sections.push(`Ad Name: ${variant.headline}`);
+    sections.push(`Headline: ${variant.headline}`);
+    sections.push(`Primary Text Short: ${variant.primaryText.short}`);
+    sections.push(`Primary Text Medium: ${variant.primaryText.medium}`);
+    sections.push(`Primary Text Long: ${variant.primaryText.long}`);
+    sections.push(`Description: ${variant.description}`);
+    sections.push(`CTA: ${variant.ctaButton}`);
+    sections.push("");
+  });
+
+  return sections.join("\n");
+}
+
+export function getExportFilename(campaign: Campaign, format: string): string {
+  return `${cleanSlug(campaign.offer_data.offerName || campaign.title)}-campaign.${format}`;
+}
+
+export const buildCampaignExport = exportAsText;
