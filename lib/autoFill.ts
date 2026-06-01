@@ -148,6 +148,8 @@ export function inferCTA(form: Pick<OfferFormInput, "category" | "benefits" | "d
 export function autoFillForm(form: OfferFormInput): OfferFormInput {
   const category = form.category || "Physical Product";
   const next: OfferFormInput = {
+    sourceUrl: safeText(form.sourceUrl),
+    inputType: form.inputType || "manual",
     offerName: safeText(form.offerName),
     category,
     price: safeText(form.price) || "29",
@@ -230,6 +232,8 @@ export function normalizeReliableOfferInput(input: OfferFormInput): OfferFormDat
   const safe = buildReliableFormPayload(input);
 
   return {
+    sourceUrl: safe.sourceUrl,
+    inputType: safe.inputType || "manual",
     offerName: safe.offerName || "Untitled Offer",
     category: safe.category,
     price: Number(safe.price || 29),

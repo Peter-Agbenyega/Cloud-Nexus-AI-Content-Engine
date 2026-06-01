@@ -41,6 +41,8 @@ export type AudienceAwarenessLevel =
   | "product-aware";
 
 export interface OfferFormInput {
+  sourceUrl?: string;
+  inputType: "manual" | "url" | "description";
   offerName: string;
   category: OfferCategory;
   price: string;
@@ -55,6 +57,8 @@ export interface OfferFormInput {
 }
 
 export interface OfferFormData {
+  sourceUrl?: string;
+  inputType: "manual" | "url" | "description";
   offerName: string;
   category: OfferCategory;
   price: number;

@@ -76,6 +76,21 @@ type FormFieldKey =
 type ToastType = "success" | "error" | "info";
 interface ToastItem { id: number; message: string; type: ToastType; }
 
+interface UrlExtractResponse {
+  extracted: {
+    sourceUrl: string;
+    offerName: string;
+    description: string;
+    price: string;
+    benefits: string[];
+    targetAudience: string;
+    painPoint: string;
+    socialProof: string;
+    category: OfferFormInput["category"];
+  } | null;
+  error?: string;
+}
+
 function platformIcon(platform: PlatformKey) {
   if (platform === "tiktok-reels") return Video;
   if (platform === "facebook-meta-ads") return Target;
@@ -546,6 +561,9 @@ export function GenerateCampaignForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [generationIssues, setGenerationIssues] = useState<GenerationIssue[]>([]);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [urlInput, setUrlInput] = useState("");
+  const [urlExtractState, setUrlExtractState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [urlExtractMessage, setUrlExtractMessage] = useState("");
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Partial<Record<FormFieldKey, boolean>>>({});
   const [transitionDirection, setTransitionDirection] = useState<"forward" | "backward">("forward");
@@ -823,6 +841,81 @@ export function GenerateCampaignForm() {
     );
   };
 
+  const extractUrlDetails = async () => {
+    const url = urlInput.trim();
+    if (!url) {
+      setUrlExtractState("error");
+      setUrlExtractMessage("Paste a public product URL first.");
+      return;
+    }
+
+    setUrlExtractState("loading");
+    setUrlExtractMessage("");
+
+    try {
+      const payload = await fetchJsonWithTimeout<UrlExtractResponse>(
+        "/api/extract-url",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        },
+        15_000,
+      );
+
+      if (!payload.extracted) {
+        throw new Error(payload.error || "Could not extract product details from this page.");
+      }
+
+      const extracted = payload.extracted;
+      const benefits = [...extracted.benefits].filter(Boolean);
+      while (benefits.length < 3) {
+        benefits.push("");
+      }
+
+      setForm((current) => autoFillForm({
+        ...current,
+        sourceUrl: extracted.sourceUrl,
+        inputType: "url",
+        offerName: extracted.offerName || current.offerName,
+        category: extracted.category || current.category,
+        price: extracted.price || current.price,
+        description: extracted.description.slice(0, 200) || current.description,
+        targetAudience: extracted.targetAudience || current.targetAudience,
+        painPoint: extracted.painPoint || current.painPoint,
+        benefits: benefits.slice(0, 3) as [string, string, string],
+        socialProof: extracted.socialProof || current.socialProof,
+        platforms: current.platforms.length > 0 ? current.platforms : inferPlatforms(extracted.category),
+      }));
+
+      markSuggestedFields(
+        [
+          "offerName",
+          "category",
+          "price",
+          "description",
+          "targetAudience",
+          "painPoint",
+          "benefit-0",
+          "benefit-1",
+          "benefit-2",
+          "socialProof",
+        ],
+        "heuristic",
+      );
+      setStep(1);
+      setUrlExtractState("success");
+      setUrlExtractMessage("We found your product details. Review and edit below.");
+    } catch (error) {
+      setUrlExtractState("error");
+      setUrlExtractMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not analyze that URL. You can still continue manually.",
+      );
+    }
+  };
+
   const applyConversationSuggestion = (suggestion: AssistDraft, announce?: string) => {
     applyDraftSuggestion(suggestion, "ai", {
       fillAll: true,
@@ -1076,6 +1169,8 @@ export function GenerateCampaignForm() {
     }
 
     const nextForm = autoFillForm({
+      sourceUrl: "",
+      inputType: "description",
       offerName: idea.productName,
       category: idea.category,
       price: idea.estimatedPrice.replace(/[^0-9.]/g, "") || "29",
@@ -1194,6 +1289,60 @@ export function GenerateCampaignForm() {
         />
 
         <div ref={formStartRef} />
+
+        <div
+          style={{
+            background: "#F0F9FF",
+            border: "1px solid #BAE6FD",
+            borderRadius: "12px",
+            padding: "20px 24px",
+            marginBottom: "20px",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div>
+              <p style={{ margin: "0 0 4px", fontWeight: 800, color: "#075985", fontSize: "16px" }}>
+                Start with a URL (optional)
+              </p>
+              <p style={{ margin: 0, color: "#0369A1", fontSize: "14px", lineHeight: 1.5 }}>
+                Paste your product URL and we&apos;ll fill in your brief automatically
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <input
+                value={urlInput}
+                onChange={(event) => setUrlInput(event.target.value)}
+                className="input"
+                placeholder="https://your-shopify-store.com/products/..."
+                aria-label="Product URL"
+                style={{ flex: "1 1 280px", background: "white" }}
+              />
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => void extractUrlDetails()}
+                disabled={urlExtractState === "loading" || isBusy}
+                style={{ minWidth: "170px", justifyContent: "center" }}
+              >
+                {urlExtractState === "loading" && <span className="spinner" aria-hidden="true" />}
+                {urlExtractState === "loading" ? "Analyzing your page..." : "Extract Details →"}
+              </button>
+            </div>
+            {urlExtractMessage && (
+              <p
+                role={urlExtractState === "error" ? "alert" : "status"}
+                style={{
+                  margin: 0,
+                  fontSize: "13px",
+                  color: urlExtractState === "error" ? "#B91C1C" : "#047857",
+                  fontWeight: 600,
+                }}
+              >
+                {urlExtractMessage}
+              </p>
+            )}
+          </div>
+        </div>
 
         {step === 1 && (
           <div className="assist-panel" style={{ marginBottom: "20px" }}>

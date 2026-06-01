@@ -63,6 +63,8 @@ export function toOfferFormData(value: StrategyInput): OfferFormData {
   }
 
   return {
+    sourceUrl: "",
+    inputType: "manual",
     offerName: value.offerName,
     category: value.category,
     price: Number(value.price.replace(/[^0-9.]/g, "")) || 0,

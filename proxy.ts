@@ -40,5 +40,6 @@ export const config = {
     "/api/generate",
     "/api/assist",
     "/api/ideas",
+    "/api/extract-url",
   ],
 };

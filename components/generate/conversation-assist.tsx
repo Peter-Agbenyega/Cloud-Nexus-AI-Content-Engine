@@ -269,6 +269,8 @@ function buildCandidateForm(form: OfferFormInput, userInput: string): OfferFormI
   const offerName = form.offerName.trim() || toTitleCase(parsed.offer || seed.split(" ").slice(0, 5).join(" "));
 
   return {
+    sourceUrl: form.sourceUrl,
+    inputType: form.inputType || "description",
     offerName,
     category: inferredCategory,
     price: extractPrice(seed) || form.price.trim() || inferPrice(inferredCategory, seed || offerName),

@@ -1,6 +1,8 @@
 import { OfferFormInput, PlatformKey, platformOptions } from "@/lib/types";
 
 export const INITIAL_FORM_STATE: OfferFormInput = {
+  sourceUrl: "",
+  inputType: "manual",
   offerName: "",
   category: "Physical Product",
   price: "29",
