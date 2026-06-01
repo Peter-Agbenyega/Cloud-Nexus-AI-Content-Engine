@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { validateEnv } from "@/lib/env";
 import "./globals.css";
 
 const inter = Inter({
@@ -22,6 +23,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  validateEnv();
+
   return (
     <html lang="en" className="h-full antialiased">
       <body className={`${inter.className} min-h-full flex flex-col`}>{children}</body>

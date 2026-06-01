@@ -1,20 +1,48 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
+import {
+  formatZodErrors,
+  prepareOfferForValidation,
+  StrategyRequestSchema,
+  toOfferFormData,
+} from "@/lib/api-schemas";
+import { getRateLimitIdentifier, getUserFromRequest } from "@/lib/auth";
 import { validateNormalizedOfferData } from "@/lib/form";
 import { parseRequestJson } from "@/lib/json";
 import { generateStrategyBrief } from "@/lib/openai";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { StrategyRequestBody } from "@/lib/types";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = parseRequestJson<StrategyRequestBody>(await request.text());
+    const rawBody = parseRequestJson<Record<string, unknown>>(await request.text());
+    const parsed = StrategyRequestSchema.safeParse({
+      ...rawBody,
+      offerData: prepareOfferForValidation(rawBody.offerData),
+    });
 
-    if (!body.offerData) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Offer data is required to build the strategy brief." },
+        {
+          error: "Invalid strategy request.",
+          validationErrors: formatZodErrors(parsed.error),
+        },
         { status: 400 },
       );
     }
+
+    const user = await getUserFromRequest(request);
+    const rateLimit = await checkRateLimit(getRateLimitIdentifier(request, user?.id));
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Too many requests", code: "RATE_LIMITED", retryAfter: 60 },
+        { status: 429 },
+      );
+    }
+
+    const body: StrategyRequestBody = {
+      offerData: toOfferFormData(parsed.data.offerData),
+    };
 
     const validationErrors = validateNormalizedOfferData(body.offerData);
     if (validationErrors.length > 0) {

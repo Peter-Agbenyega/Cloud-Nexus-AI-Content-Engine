@@ -1,25 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import {
+  formatZodErrors,
+  prepareOfferForValidation,
+  SaveCampaignSchema,
+  StrategySchema,
+  toOfferFormData,
+} from "@/lib/api-schemas";
+import { getUserFromRequest } from "@/lib/auth";
 import { isStrategyBrief, validateNormalizedOfferData } from "@/lib/form";
 import { parseRequestJson } from "@/lib/json";
 import { createSupabaseServiceClient } from "@/lib/supabase/service";
 import { SaveCampaignRequestBody } from "@/lib/types";
-
-async function getAuthenticatedUserId(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const accessToken = authHeader?.replace("Bearer ", "").trim();
-
-  if (!accessToken) {
-    return null;
-  }
-
-  const supabase = createSupabaseServiceClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser(accessToken);
-
-  return user?.id ?? null;
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,7 +35,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ campaign: data });
     }
 
-    const userId = await getAuthenticatedUserId(request);
+    const user = await getUserFromRequest(request);
+    const userId = user?.id ?? null;
     if (!userId) {
       return NextResponse.json(
         { error: "Authentication is required to load dashboard campaigns." },
@@ -74,21 +67,65 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = parseRequestJson<SaveCampaignRequestBody>(await request.text());
+    const rawBody = parseRequestJson<Record<string, unknown>>(await request.text());
     const supabase = createSupabaseServiceClient();
-    const userId = await getAuthenticatedUserId(request);
+    const user = await getUserFromRequest(request);
+    const userId = user?.id ?? null;
+
+    const legacyBody = rawBody as Partial<SaveCampaignRequestBody> & Record<string, unknown>;
+    const offerData = legacyBody.offerData ?? rawBody.offer_data;
+    const parsedOffer = StrategySchema.safeParse(prepareOfferForValidation(offerData));
+
+    if (!parsedOffer.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid campaign offer data.",
+          validationErrors: formatZodErrors(parsedOffer.error),
+        },
+        { status: 400 },
+      );
+    }
+
+    const normalizedCampaign = {
+      id: legacyBody.campaignId ?? rawBody.id,
+      title: rawBody.title ?? toOfferFormData(parsedOffer.data).offerName,
+      offer_data: toOfferFormData(parsedOffer.data),
+      strategy_brief: legacyBody.strategyBrief ?? rawBody.strategy_brief,
+      generated_content: legacyBody.generatedContent ?? rawBody.generated_content,
+      commerce_scores: legacyBody.commerceScores ?? rawBody.commerce_scores,
+      platforms: rawBody.platforms,
+    };
+
+    const parsed = SaveCampaignSchema.safeParse(normalizedCampaign);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid campaign payload.",
+          validationErrors: formatZodErrors(parsed.error),
+        },
+        { status: 400 },
+      );
+    }
 
     if (
-      !body.offerData ||
-      !body.strategyBrief ||
-      !body.generatedContent ||
-      !body.commerceScores
+      !parsed.data.strategy_brief ||
+      !parsed.data.generated_content ||
+      !parsed.data.commerce_scores
     ) {
       return NextResponse.json(
         { error: "Incomplete campaign payload." },
         { status: 400 },
       );
     }
+
+    const body: SaveCampaignRequestBody = {
+      campaignId: parsed.data.id,
+      offerData: parsed.data.offer_data as unknown as SaveCampaignRequestBody["offerData"],
+      strategyBrief: parsed.data.strategy_brief as unknown as SaveCampaignRequestBody["strategyBrief"],
+      generatedContent: parsed.data.generated_content as unknown as SaveCampaignRequestBody["generatedContent"],
+      commerceScores: parsed.data.commerce_scores as unknown as SaveCampaignRequestBody["commerceScores"],
+    };
 
     const validationErrors = validateNormalizedOfferData(body.offerData);
     if (validationErrors.length > 0) {

@@ -15,3 +15,5 @@ export function createSupabaseServiceClient() {
     },
   });
 }
+
+export const createServiceClient = createSupabaseServiceClient;
