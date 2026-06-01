@@ -12,9 +12,26 @@ import { parseRequestJson } from "@/lib/json";
 import { generateStrategyBrief } from "@/lib/openai";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { StrategyRequestBody } from "@/lib/types";
+import { checkCampaignLimit } from "@/lib/usage";
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized", code: "AUTH_REQUIRED" },
+        { status: 401 },
+      );
+    }
+
+    const rateLimit = await checkRateLimit(getRateLimitIdentifier(request, user.id));
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Too many requests", code: "RATE_LIMITED", retryAfter: 60 },
+        { status: 429 },
+      );
+    }
+
     const rawBody = parseRequestJson<Record<string, unknown>>(await request.text());
     const parsed = StrategyRequestSchema.safeParse({
       ...rawBody,
@@ -31,18 +48,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await getUserFromRequest(request);
-    const rateLimit = await checkRateLimit(getRateLimitIdentifier(request, user?.id));
-    if (!rateLimit.success) {
-      return NextResponse.json(
-        { error: "Too many requests", code: "RATE_LIMITED", retryAfter: 60 },
-        { status: 429 },
-      );
-    }
-
     const body: StrategyRequestBody = {
       offerData: toOfferFormData(parsed.data.offerData),
     };
+
+    const campaignLimit = await checkCampaignLimit(user.id);
+    if (!campaignLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: campaignLimit.reason,
+          code: "LIMIT_REACHED",
+          plan: campaignLimit.plan,
+        },
+        { status: 403 },
+      );
+    }
 
     const validationErrors = validateNormalizedOfferData(body.offerData);
     if (validationErrors.length > 0) {

@@ -12,6 +12,7 @@ import { isStrategyBrief, validateNormalizedOfferData } from "@/lib/form";
 import { parseRequestJson } from "@/lib/json";
 import { createSupabaseServiceClient } from "@/lib/supabase/service";
 import { SaveCampaignRequestBody } from "@/lib/types";
+import { incrementCampaignCount } from "@/lib/usage";
 
 export async function GET(request: NextRequest) {
   try {
@@ -186,6 +187,10 @@ export async function POST(request: NextRequest) {
 
     if (error || !data) {
       throw error ?? new Error("Campaign could not be saved.");
+    }
+
+    if (userId) {
+      await incrementCampaignCount(userId);
     }
 
     return NextResponse.json({ campaign: data });
