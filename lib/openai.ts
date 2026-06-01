@@ -635,6 +635,41 @@ export async function callOpenAI(
   }
 }
 
+export async function streamOpenAI(
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens: number = 2000,
+): Promise<ReadableStream<Uint8Array>> {
+  const stream = await getOpenAIClient().chat.completions.create({
+    model: MODEL_NAME,
+    temperature: DEFAULT_TEMPERATURE,
+    max_tokens: maxTokens,
+    stream: true,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+  });
+
+  const encoder = new TextEncoder();
+
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content ?? "";
+          if (delta) {
+            controller.enqueue(encoder.encode(delta));
+          }
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+  });
+}
+
 async function requestStructuredJson<T>(
   system: string,
   prompt: string,
@@ -682,9 +717,12 @@ async function createChatCompletion({
 export async function generateStrategyBrief(
   body: StrategyRequestBody,
 ): Promise<StrategyBrief> {
-  const { offerData } = body;
+  const raw = await requestStructuredJson<unknown>(STRATEGY_SYSTEM_PROMPT, buildStrategyPrompt(body.offerData), 900);
+  return sanitizeStrategyBrief(raw);
+}
 
-  const prompt = `Analyze this offer and produce a strategic brief:
+export function buildStrategyPrompt(offerData: OfferFormData) {
+  return `Analyze this offer and produce a strategic brief:
 
 ${formatOfferDetails(offerData)}
 
@@ -703,9 +741,6 @@ Return a JSON object with this exact structure:
 }
 
 Return only valid JSON. No markdown. No explanation.`;
-
-  const raw = await requestStructuredJson<unknown>(STRATEGY_SYSTEM_PROMPT, prompt, 900);
-  return sanitizeStrategyBrief(raw);
 }
 
 async function generatePlatformContent(

@@ -33,6 +33,13 @@ const LOADING_MESSAGES = [
   "Generating content...",
 ];
 
+const STREAM_STAGES = [
+  { threshold: 20, label: "Analyzing your offer..." },
+  { threshold: 50, label: "Identifying your audience..." },
+  { threshold: 80, label: "Building campaign angles..." },
+  { threshold: 100, label: "Finalizing strategy..." },
+] as const;
+
 const STEP_META = [
   {
     heading: "Tell us about your offer",
@@ -218,6 +225,16 @@ function buildRequestErrorMessage(fallback: string, payload: unknown) {
 
   const maybeError = (payload as { error?: unknown }).error;
   return typeof maybeError === "string" && maybeError.trim() ? maybeError : fallback;
+}
+
+function parseStreamedStrategy(value: string): StrategyBrief {
+  const cleaned = value
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  return JSON.parse(cleaned) as StrategyBrief;
 }
 
 async function fetchJsonWithTimeout<T>(url: string, init: RequestInit, timeoutMs = 90_000): Promise<T> {
@@ -568,6 +585,8 @@ export function GenerateCampaignForm() {
   const [autoDraftState, setAutoDraftState] = useState<"idle" | "drafting" | "refining">("idle");
   const [loadingState, setLoadingState] = useState<"idle" | "strategy" | "content" | "saving">("idle");
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const [streamedText, setStreamedText] = useState("");
+  const [streamProgress, setStreamProgress] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [generationIssues, setGenerationIssues] = useState<GenerationIssue[]>([]);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -1179,6 +1198,8 @@ export function GenerateCampaignForm() {
     setErrors([]);
     setSubmitError(null);
     setGenerationIssues([]);
+    setStreamedText("");
+    setStreamProgress(0);
     setLoadingState("strategy");
     setLoadingMsgIdx(0);
 
@@ -1192,14 +1213,57 @@ export function GenerateCampaignForm() {
       try {
         const normalizedSubmission = normalizeOfferInput(submissionForm);
 
-        const strategyPayload = await fetchJsonWithTimeout<{ strategyBrief: StrategyBrief }>(
-          "/api/strategy",
+        const strategyResponse = await fetch(
+          "/api/strategy/stream",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ offerData: normalizedSubmission }),
           },
         );
+
+        if (!strategyResponse.ok) {
+          const payload = await strategyResponse.json().catch(() => ({}));
+          throw new Error(buildRequestErrorMessage("Generation is taking longer than expected. Please try again.", payload));
+        }
+
+        const reader = strategyResponse.body?.getReader();
+        if (!reader) {
+          throw new Error("Strategy stream could not be opened. Please try again.");
+        }
+
+        const decoder = new TextDecoder();
+        let accumulated = "";
+        let chunkCount = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          accumulated += decoder.decode(value, { stream: true });
+          chunkCount += 1;
+          setStreamedText(accumulated);
+          setStreamProgress((current) => Math.min(95, Math.max(current + 4, Math.min(80, chunkCount * 4))));
+        }
+
+        accumulated += decoder.decode();
+        setStreamedText(accumulated);
+        setStreamProgress(100);
+
+        let strategyBrief: StrategyBrief;
+        try {
+          strategyBrief = parseStreamedStrategy(accumulated);
+        } catch {
+          const fallbackPayload = await fetchJsonWithTimeout<{ strategyBrief: StrategyBrief }>(
+            "/api/strategy",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ offerData: normalizedSubmission }),
+            },
+          );
+          strategyBrief = fallbackPayload.strategyBrief;
+        }
 
         setLoadingState("content");
 
@@ -1210,7 +1274,7 @@ export function GenerateCampaignForm() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               offerData: normalizedSubmission,
-              strategyBrief: strategyPayload.strategyBrief,
+              strategyBrief,
               platforms: normalizedSubmission.platforms,
             }),
           },
@@ -1219,10 +1283,10 @@ export function GenerateCampaignForm() {
         setGenerationIssues(generationPayload.failedPlatforms);
         setLoadingState("saving");
 
-        const commerceScores = calculateCommerceScores(normalizedSubmission, strategyPayload.strategyBrief);
+        const commerceScores = calculateCommerceScores(normalizedSubmission, strategyBrief);
         const savePayload: SaveCampaignRequestBody = {
           offerData: normalizedSubmission,
-          strategyBrief: strategyPayload.strategyBrief,
+          strategyBrief,
           generatedContent: generationPayload.generatedContent,
           commerceScores,
         };
@@ -2047,6 +2111,27 @@ export function GenerateCampaignForm() {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {loadingState === "strategy" && (
+          <div className="card" style={{ marginTop: "24px", borderColor: "#BAE6FD", background: "#F8FCFF" }}>
+            <p className="lbl" style={{ marginBottom: "8px" }}>Building your strategy...</p>
+            <div style={{ display: "grid", gap: "8px", marginBottom: "14px" }}>
+              {STREAM_STAGES.map((stage, index) => {
+                const active = streamProgress >= (index === 0 ? 0 : STREAM_STAGES[index - 1].threshold);
+                const complete = streamProgress >= stage.threshold;
+                return (
+                  <div key={stage.label} style={{ display: "flex", alignItems: "center", gap: "8px", color: active ? "#075985" : "#94A3B8", fontSize: "13px", fontWeight: active ? 700 : 500 }}>
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: complete ? "#0EA5E9" : active ? "#7DD3FC" : "#CBD5E1" }} />
+                    <span>Stage {index + 1}: {stage.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <pre style={{ margin: 0, minHeight: "140px", maxHeight: "260px", overflow: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", background: "white", border: "1px solid #E0F2FE", borderRadius: "8px", padding: "14px", color: "#0F172A", fontSize: "13px", lineHeight: 1.6 }}>
+              {streamedText || "Preparing the first strategy tokens..."}
+            </pre>
           </div>
         )}
 

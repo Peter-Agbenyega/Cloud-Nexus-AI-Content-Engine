@@ -37,6 +37,7 @@ export const config = {
     "/results/:path*",
     "/api/campaigns",
     "/api/strategy",
+    "/api/strategy/stream",
     "/api/generate",
     "/api/assist",
     "/api/ideas",
