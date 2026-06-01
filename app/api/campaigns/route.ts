@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          message || "Campaign save failed. Please verify your Supabase setup.",
+          message || "Could not save your campaign. Your content is still here — try saving again.",
       },
       { status },
     );

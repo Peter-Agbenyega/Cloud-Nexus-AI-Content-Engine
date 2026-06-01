@@ -44,7 +44,7 @@ function getOpenAIClient() {
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
-      reject(new Error("Generation timed out. Please try again."));
+      reject(new Error("Generation is taking longer than expected. Please try again."));
     }, timeoutMs);
 
     promise

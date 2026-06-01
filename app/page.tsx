@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, BrainCircuit, Check, FileStack, Menu, Target, X } from "lucide-react";
+import { ArrowRight, BrainCircuit, CalendarDays, Check, FileStack, Image, Mail, Menu, MousePointerClick, Target, Video, X } from "lucide-react";
 
 import { ProductIdeasSection } from "@/components/ideas/product-ideas-section";
 
@@ -31,18 +31,35 @@ const steps = [
   {
     number: 1,
     title: "Brief",
-    description: "Describe your offer, audience, and goal in 3 minutes",
+    description: "Describe your offer or paste a URL",
   },
   {
     number: 2,
     title: "Strategy",
-    description: "AI analyzes your offer and builds a conversion brief",
+    description: "AI builds your conversion strategy",
   },
   {
     number: 3,
     title: "Content",
-    description: "Get TikTok scripts, Meta ads, emails, and more",
+    description: "Content generates across all platforms",
   },
+  {
+    number: 4,
+    title: "Export",
+    description: "Export the campaign pack and launch",
+  },
+];
+
+const outputTypes = [
+  { icon: Target, label: "Facebook Ads" },
+  { icon: Video, label: "TikTok Scripts" },
+  { icon: Mail, label: "Email Sequences" },
+  { icon: MousePointerClick, label: "Landing Page Copy" },
+  { icon: Video, label: "Video Concepts" },
+  { icon: CalendarDays, label: "30-Day Calendar" },
+  { icon: Image, label: "Creative Prompts" },
+  { icon: Target, label: "Google Ads" },
+  { icon: FileStack, label: "LinkedIn Posts" },
 ];
 
 const FREE_FEATURES = ["1 campaign per month", "All 5 platforms", "Text export"];
@@ -142,10 +159,9 @@ export default function Home() {
             <div className="hero-grid">
               <div style={{ textAlign: "left" }} className="max-md:text-center max-md:mx-auto">
                 <span className="hero-badge">Commerce-First AI Campaign Engine</span>
-                <h1 className="hero-headline">Create content that sells.</h1>
-                <p className="hero-subheadline">Not just content.</p>
+                <h1 className="hero-headline">Create content that sells. Not just content.</h1>
                 <p className="hero-copy">
-                  One offer brief. One strategy pass. A full campaign pack across every channel — ready to launch.
+                  Paste any URL. Get a full campaign in 60 seconds. One strategy pass produces a launch-ready pack across every channel.
                 </p>
 
                 <div className="hero-actions">
@@ -162,11 +178,11 @@ export default function Home() {
                 <p className="lbl" style={{ margin: "0 0 14px" }}>What You Get</p>
                 <div className="hero-preview-list">
                   {[
-                    { platform: "TikTok / Reels", detail: "3 hooks · full script · 3 captions" },
-                    { platform: "Facebook / Meta", detail: "3 ad variants · short/med/long text" },
-                    { platform: "Product Page", detail: "Hero copy · 5 bullets · FAQs" },
-                    { platform: "Email Promo", detail: "3 subject lines · full email body" },
-                    { platform: "Landing Page", detail: "Above-fold to final CTA" },
+                    { platform: "TikTok / Reels", detail: "Hooks · scripts · captions" },
+                    { platform: "Facebook / Meta", detail: "Ad variants for paid traffic" },
+                    { platform: "Video Concepts", detail: "Scripts · scenes · shot lists" },
+                    { platform: "30-Day Calendar", detail: "A full month planned" },
+                    { platform: "Creative Prompts", detail: "Image and video prompts" },
                   ].map(({ platform, detail }) => (
                     <div key={platform} className="hero-preview-item">
                       <strong>{platform}</strong>
@@ -191,9 +207,9 @@ export default function Home() {
         <section id="how-it-works" className="steps-section">
           <div className="page-section">
             <h2 className="section-heading" style={{ textAlign: "center", marginBottom: "36px" }}>
-              Three steps. One campaign pack.
+              Four steps. One campaign pack.
             </h2>
-            <div className="steps-grid md:grid-cols-3">
+            <div className="steps-grid md:grid-cols-4">
               {steps.map((step, index) => (
                 <article key={step.number} className="step-card">
                   <span className="step-circle">{step.number}</span>
@@ -208,6 +224,19 @@ export default function Home() {
 
         <section className="features-section">
           <div className="page-section">
+            <h2 className="section-heading" style={{ textAlign: "center", marginBottom: "28px" }}>
+              What You Get
+            </h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "14px", marginBottom: "34px" }}>
+              {outputTypes.map(({ icon: Icon, label }) => (
+                <div key={label} style={{ background: "white", border: "1px solid var(--color-border-light)", borderRadius: "8px", padding: "16px", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span className="feature-icon" style={{ width: "34px", height: "34px" }}>
+                    <Icon style={{ width: "17px", height: "17px" }} aria-hidden="true" />
+                  </span>
+                  <strong style={{ fontSize: "14px", color: "#111827" }}>{label}</strong>
+                </div>
+              ))}
+            </div>
             <div className="features-grid">
               {features.map(({ icon: Icon, title, description }) => (
                 <article key={title} className="feature-card">

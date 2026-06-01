@@ -27,6 +27,7 @@ import {
 import { calculateCommerceScores } from "@/lib/commerce-score";
 
 const IDEA_STORAGE_KEY = "cloud-nexus:selected-product-idea";
+const ONBOARDING_STORAGE_KEY = "cloud-nexus:onboarding-shown";
 const LOADING_MESSAGES = [
   "Analysing offer...",
   "Building strategy...",
@@ -225,6 +226,14 @@ function joinDescribedBy(...ids: Array<string | undefined>) {
 
 function buildRequestErrorMessage(fallback: string, payload: unknown) {
   if (!payload || typeof payload !== "object") return fallback;
+
+  const code = (payload as { code?: unknown }).code;
+  if (code === "RATE_LIMITED") {
+    return "You've hit the generation limit. Please wait 60 seconds before trying again.";
+  }
+  if (code === "AUTH_REQUIRED") {
+    return "Please sign in to save your campaigns.";
+  }
 
   const maybeError = (payload as { error?: unknown }).error;
   return typeof maybeError === "string" && maybeError.trim() ? maybeError : fallback;
@@ -597,11 +606,14 @@ export function GenerateCampaignForm() {
   const [urlExtractState, setUrlExtractState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [urlExtractMessage, setUrlExtractMessage] = useState("");
   const [brands, setBrands] = useState<BrandProfile[]>([]);
+  const [userPlan, setUserPlan] = useState("free");
   const [selectedBrandId, setSelectedBrandId] = useState("");
   const [brandModalOpen, setBrandModalOpen] = useState(false);
   const [brandSaveName, setBrandSaveName] = useState("");
   const [brandSaveError, setBrandSaveError] = useState("");
   const [brandSaveBusy, setBrandSaveBusy] = useState(false);
+  const [upgradePrompt, setUpgradePrompt] = useState<{ feature: string; limit: string; benefit: string } | null>(null);
+  const [onboardingStep, setOnboardingStep] = useState(0);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Partial<Record<FormFieldKey, boolean>>>({});
   const [transitionDirection, setTransitionDirection] = useState<"forward" | "backward">("forward");
@@ -752,6 +764,14 @@ export function GenerateCampaignForm() {
   const applyPlatformToggle = (platformKey: OfferFormInput["platforms"][number]) => {
     const selected = form.platforms.includes(platformKey);
     if (selected && form.platforms.length === 1) {
+      return;
+    }
+    if (!selected && userPlan === "free" && form.platforms.length >= 2) {
+      setUpgradePrompt({
+        feature: "More Platforms",
+        limit: "Free includes 2 platforms per campaign.",
+        benefit: "Starter unlocks all 8 platforms, brand memory, and richer exports.",
+      });
       return;
     }
     const next = selected
@@ -1015,6 +1035,7 @@ export function GenerateCampaignForm() {
         const data = await response.json();
         if (!ignore) {
           setBrands(data.brands ?? []);
+          setUserPlan(data.plan ?? "free");
         }
       } catch {
         if (!ignore) setBrands([]);
@@ -1027,6 +1048,26 @@ export function GenerateCampaignForm() {
       ignore = true;
     };
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (!window.localStorage.getItem(ONBOARDING_STORAGE_KEY)) {
+        setOnboardingStep(1);
+      }
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const advanceOnboarding = () => {
+    if (onboardingStep >= 3) {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "1");
+      setOnboardingStep(0);
+      return;
+    }
+
+    setOnboardingStep((current) => current + 1);
+  };
 
   const applyBrandProfile = (brandId: string) => {
     setSelectedBrandId(brandId);
@@ -1070,6 +1111,13 @@ export function GenerateCampaignForm() {
         }),
       });
       const data = await response.json();
+      if (response.status === 403 && data.code === "LIMIT_REACHED") {
+        setUpgradePrompt({
+          feature: "Brand Profiles",
+          limit: "Free does not include saved brand profiles.",
+          benefit: "Starter unlocks 1 brand profile plus all 8 platforms.",
+        });
+      }
       if (!response.ok) throw new Error(data.error || "Could not save brand profile.");
       setBrands((current) => [data.brand, ...current]);
       setSelectedBrandId(data.brand.id);
@@ -1227,6 +1275,13 @@ export function GenerateCampaignForm() {
 
         if (!strategyResponse.ok) {
           const payload = await strategyResponse.json().catch(() => ({}));
+          if ((payload as { code?: string }).code === "LIMIT_REACHED") {
+            setUpgradePrompt({
+              feature: "More Campaigns",
+              limit: "Free includes 3 campaigns per month.",
+              benefit: "Starter unlocks 15 campaigns per month and all 8 platforms.",
+            });
+          }
           throw new Error(buildRequestErrorMessage("Generation is taking longer than expected. Please try again.", payload));
         }
 
@@ -1381,6 +1436,31 @@ export function GenerateCampaignForm() {
   return (
     <div className="generate-shell page-enter">
       <ToastContainer toasts={toasts} />
+      {onboardingStep > 0 && (
+        <div style={{ position: "fixed", right: "20px", bottom: "20px", zIndex: 60, width: "min(340px, calc(100vw - 40px))", background: "white", border: "1px solid #BAE6FD", borderRadius: "8px", padding: "16px", boxShadow: "0 18px 42px rgba(15,23,42,0.18)" }}>
+          <p style={{ margin: "0 0 10px", fontWeight: 800, color: "#075985", lineHeight: 1.4 }}>
+            {onboardingStep === 1 && "Welcome to Cloud Nexus AI Studio. Start here →"}
+            {onboardingStep === 2 && "Paste a URL or describe your offer"}
+            {onboardingStep === 3 && "Your full campaign will be ready in 60 seconds"}
+          </p>
+          <button type="button" className="btn-primary" onClick={advanceOnboarding} style={{ width: "100%", justifyContent: "center" }}>
+            {onboardingStep >= 3 ? "Got it" : "Next"}
+          </button>
+        </div>
+      )}
+      {upgradePrompt && (
+        <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div style={{ width: "100%", maxWidth: "460px", background: "white", borderRadius: "8px", padding: "22px", boxShadow: "0 24px 70px rgba(15,23,42,0.22)" }}>
+            <h2 style={{ margin: "0 0 8px", fontSize: "22px" }}>Unlock {upgradePrompt.feature}</h2>
+            <p style={{ margin: "0 0 8px", color: "var(--color-text-secondary)" }}>{upgradePrompt.limit}</p>
+            <p style={{ margin: "0 0 18px", color: "#0F172A", fontWeight: 600 }}>{upgradePrompt.benefit}</p>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button type="button" className="btn-ghost" onClick={() => setUpgradePrompt(null)}>Not now</button>
+              <Link href="/pricing" className="btn-primary">Upgrade to Starter — $19/month</Link>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="app-nav">
         <div className="app-nav-inner" style={{ maxWidth: "760px" }}>
           <Link href="/" className="nav-logo">Cloud Nexus AI</Link>
