@@ -18,7 +18,9 @@ import { PLATFORM_LABELS } from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   CampaignAnalysis,
+  ContentBrief,
   ContentCalendarContent,
+  ContentPackageContent,
   CreativePromptsContent,
   CampaignRecord,
   EmailContent,
@@ -32,6 +34,21 @@ import {
   TikTokContent,
   VideoConceptsContent,
 } from "@/lib/types";
+
+const platformKeySet = new Set<PlatformKey>([
+  "tiktok-reels",
+  "facebook-meta-ads",
+  "product-page-copy",
+  "email-promo",
+  "landing-page",
+  "video-concepts",
+  "content-calendar",
+  "creative-prompts",
+]);
+
+function isPlatformKey(value: string): value is PlatformKey {
+  return platformKeySet.has(value as PlatformKey);
+}
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
@@ -79,6 +96,130 @@ const ContentCard = memo(function ContentCard({
       </div>
       <div className="content-card-body">{children}</div>
     </div>
+  );
+});
+
+function formatContentBriefForCopy(brief: ContentBrief) {
+  return [
+    `PROJECT TITLE\n${brief.projectTitle}`,
+    `CONTENT TYPE\n${brief.contentType}`,
+    `TARGET PLATFORM\n${brief.targetPlatform}`,
+    `CAMPAIGN GOAL\n${brief.campaignGoal}`,
+    `TARGET AUDIENCE\n${brief.targetAudience}`,
+    `MAIN OFFER\n${brief.mainOffer}`,
+    `BRAND TONE\n${brief.brandTone}`,
+    `STYLE DIRECTION\n${brief.styleDirection}`,
+    `KEY CONSTRAINTS\n${brief.keyConstraints}`,
+    `CTA\n${brief.cta}`,
+    `DESIRED OUTPUTS\n${brief.desiredOutputs}`,
+  ].join("\n\n");
+}
+
+const UniversalPackageRenderer = memo(function UniversalPackageRenderer({
+  contentBrief,
+  contentPackage,
+  onCopy,
+  copyState,
+}: {
+  contentBrief?: ContentBrief;
+  contentPackage?: ContentPackageContent;
+  onCopy: (label: string, value: string) => void;
+  copyState: string | null;
+}) {
+  if (!contentBrief && !contentPackage) return null;
+
+  return (
+    <section style={{ display: "grid", gap: "12px", marginBottom: "16px" }}>
+      {contentBrief && (
+        <ContentCard
+          title="Content Brief"
+          copyText={formatContentBriefForCopy(contentBrief)}
+          onCopy={onCopy}
+          copyState={copyState}
+        >
+          <div className="content-brief-grid">
+            {[
+              ["Project title", contentBrief.projectTitle],
+              ["Content type", contentBrief.contentType],
+              ["Target platform", contentBrief.targetPlatform],
+              ["Campaign goal", contentBrief.campaignGoal],
+              ["Target audience", contentBrief.targetAudience],
+              ["Main offer", contentBrief.mainOffer],
+              ["Brand tone", contentBrief.brandTone],
+              ["Style direction", contentBrief.styleDirection],
+              ["Key constraints", contentBrief.keyConstraints],
+              ["CTA", contentBrief.cta],
+              ["Desired outputs", contentBrief.desiredOutputs],
+            ].map(([label, value]) => (
+              <div key={label} className="data-row">
+                <span className="data-key">{label}</span>
+                <span className="data-val" style={{ maxWidth: "360px", wordBreak: "break-word" }}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </ContentCard>
+      )}
+
+      {contentPackage && (
+        <>
+          <ContentCard
+            title="Strategy Summary"
+            copyText={contentPackage.strategySummary}
+            onCopy={onCopy}
+            copyState={copyState}
+          >
+            <p className="script-block-text">{contentPackage.strategySummary}</p>
+          </ContentCard>
+
+          <div style={{ display: "grid", gap: "12px" }} className="sm:grid-cols-2">
+            <ContentCard
+              title="Main Copy"
+              copyText={contentPackage.mainCopy}
+              onCopy={onCopy}
+              copyState={copyState}
+            >
+              <p className="script-block-text">{contentPackage.mainCopy}</p>
+            </ContentCard>
+
+            <ContentCard
+              title="Short Social Caption"
+              copyText={contentPackage.shortSocialCaption}
+              onCopy={onCopy}
+              copyState={copyState}
+            >
+              <p className="script-block-text">{contentPackage.shortSocialCaption}</p>
+            </ContentCard>
+          </div>
+
+          {[
+            ["AI Image Prompt", contentPackage.aiImagePrompt],
+            ["AI Video Prompt", contentPackage.aiVideoPrompt],
+            ["Voiceover Script", contentPackage.voiceoverScript],
+            ["Music Prompt", contentPackage.musicPrompt],
+          ].map(([title, value]) => (
+            <ContentCard key={title} title={title} copyText={value} onCopy={onCopy} copyState={copyState}>
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", background: "#0F172A", color: "#E2E8F0", borderRadius: "8px", padding: "12px", fontSize: "12px", lineHeight: 1.6 }}>
+                {value}
+              </pre>
+            </ContentCard>
+          ))}
+
+          <ContentCard
+            title="Human Review Checklist"
+            copyText={contentPackage.humanReviewChecklist.map((item, index) => `${index + 1}. ${item}`).join("\n")}
+            onCopy={onCopy}
+            copyState={copyState}
+          >
+            {contentPackage.humanReviewChecklist.map((item) => (
+              <div key={item} className="proof-item">
+                <span className="proof-dot" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </ContentCard>
+        </>
+      )}
+    </section>
   );
 });
 
@@ -657,7 +798,7 @@ export function ResultsClient({ campaignId }: { campaignId: string }) {
   }, [campaign]);
 
   const platformKeys = useMemo(
-    () => (campaign ? (Object.keys(campaign.generated_content) as PlatformKey[]) : []),
+    () => (campaign ? Object.keys(campaign.generated_content).filter(isPlatformKey) : []),
     [campaign],
   );
 
@@ -1090,6 +1231,13 @@ export function ResultsClient({ campaignId }: { campaignId: string }) {
               </div>
             )}
           </div>
+
+          <UniversalPackageRenderer
+            contentBrief={campaign.generated_content.contentBrief}
+            contentPackage={campaign.generated_content.contentPackage}
+            onCopy={handleCopy}
+            copyState={copyState}
+          />
 
           <div className="platform-tabs">
             {platformKeys.map((platform) => {

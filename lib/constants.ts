@@ -4,6 +4,9 @@ export const INITIAL_FORM_STATE: OfferFormInput = {
   sourceUrl: "",
   inputType: "manual",
   offerName: "",
+  contentType: "Campaign package",
+  targetPlatform: "Multi-platform",
+  campaignGoal: "Drive qualified action from the right audience",
   category: "Physical Product",
   price: "29",
   description: "",
@@ -13,6 +16,9 @@ export const INITIAL_FORM_STATE: OfferFormInput = {
   socialProof: "",
   primaryCta: "Buy Now",
   brandTone: "Professional",
+  styleDirection: "Clean, conversion-focused, and easy to adapt",
+  keyConstraints: "",
+  desiredOutputs: "Content package, image prompt, video prompt, voiceover script, and music prompt",
   platforms: ["tiktok-reels", "facebook-meta-ads", "product-page-copy"],
 };
 

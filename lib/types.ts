@@ -47,6 +47,9 @@ export interface OfferFormInput {
   sourceUrl?: string;
   inputType: "manual" | "url" | "description";
   offerName: string;
+  contentType?: string;
+  targetPlatform?: string;
+  campaignGoal?: string;
   category: OfferCategory;
   price: string;
   description: string;
@@ -56,6 +59,9 @@ export interface OfferFormInput {
   socialProof: string;
   primaryCta: PrimaryCta;
   brandTone: BrandTone;
+  styleDirection?: string;
+  keyConstraints?: string;
+  desiredOutputs?: string;
   platforms: PlatformKey[];
 }
 
@@ -63,6 +69,9 @@ export interface OfferFormData {
   sourceUrl?: string;
   inputType: "manual" | "url" | "description";
   offerName: string;
+  contentType?: string;
+  targetPlatform?: string;
+  campaignGoal?: string;
   category: OfferCategory;
   price: number;
   description: string;
@@ -72,6 +81,9 @@ export interface OfferFormData {
   socialProof: string;
   primaryCta: PrimaryCta;
   brandTone: BrandTone;
+  styleDirection?: string;
+  keyConstraints?: string;
+  desiredOutputs?: string;
   platforms: PlatformKey[];
 }
 
@@ -193,6 +205,31 @@ export interface CreativePromptsContent {
   }[];
 }
 
+export interface ContentBrief {
+  projectTitle: string;
+  contentType: string;
+  targetPlatform: string;
+  campaignGoal: string;
+  targetAudience: string;
+  mainOffer: string;
+  brandTone: BrandTone;
+  styleDirection: string;
+  keyConstraints: string;
+  cta: PrimaryCta;
+  desiredOutputs: string;
+}
+
+export interface ContentPackageContent {
+  strategySummary: string;
+  mainCopy: string;
+  shortSocialCaption: string;
+  aiImagePrompt: string;
+  aiVideoPrompt: string;
+  voiceoverScript: string;
+  musicPrompt: string;
+  humanReviewChecklist: string[];
+}
+
 export interface GeneratedContent {
   "tiktok-reels"?: TikTokContent;
   "facebook-meta-ads"?: FacebookAdsContent;
@@ -202,6 +239,8 @@ export interface GeneratedContent {
   "video-concepts"?: VideoConceptsContent;
   "content-calendar"?: ContentCalendarContent;
   "creative-prompts"?: CreativePromptsContent;
+  contentBrief?: ContentBrief;
+  contentPackage?: ContentPackageContent;
 }
 
 export interface GenerationIssue {

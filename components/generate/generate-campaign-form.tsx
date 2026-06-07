@@ -43,9 +43,9 @@ const STREAM_STAGES = [
 
 const STEP_META = [
   {
-    heading: "Tell us about your offer",
-    sub: "We'll use this to build your strategy brief.",
-    required: "Required now: offer name, category, price point, and a short description.",
+    heading: "Set the project foundation",
+    sub: "We'll turn this idea into the project title and main offer for your content brief.",
+    required: "Required now: project title, category, price point, and a short main offer.",
   },
   {
     heading: "Describe your ideal buyer",
@@ -53,21 +53,24 @@ const STEP_META = [
     required: "Required now: target audience, pain point, and three buyer-facing benefits.",
   },
   {
-    heading: "Set up your campaign",
-    sub: "Choose where you want to publish this content.",
-    required: "Required now: choose a CTA, brand tone, and at least one platform.",
+    heading: "Build the Content Brief",
+    sub: "Define the goal, style, constraints, and desired outputs before generation.",
+    required: "Required now: choose a CTA, brand tone, and at least one platform. Optional fields sharpen the package.",
   },
   {
     heading: "Ready to generate",
-    sub: "Review your offer brief before we start.",
+    sub: "Review your Content Brief before we create the package.",
     required: "Give it one final scan, then generate your campaign pack.",
   },
 ] as const;
 
-const STEP_LABELS = ["Offer", "Audience", "Settings", "Review"];
+const STEP_LABELS = ["Project", "Audience", "Content Brief", "Review"];
 
 type FormFieldKey =
   | "offerName"
+  | "contentType"
+  | "targetPlatform"
+  | "campaignGoal"
   | "category"
   | "price"
   | "description"
@@ -79,6 +82,9 @@ type FormFieldKey =
   | "socialProof"
   | "primaryCta"
   | "brandTone"
+  | "styleDirection"
+  | "keyConstraints"
+  | "desiredOutputs"
   | "platforms";
 
 type ToastType = "success" | "error" | "info";
@@ -105,6 +111,8 @@ interface BrandProfile {
   industry?: string | null;
   target_audience?: string | null;
   brand_voice?: string[] | null;
+  approved_claims?: string[] | null;
+  banned_phrases?: string[] | null;
   preferred_cta?: string | null;
   color_notes?: string | null;
 }
@@ -1077,14 +1085,21 @@ export function GenerateCampaignForm() {
     const firstVoice = brand.brand_voice?.[0];
     const brandTone = brandToneOptions.find((option) => option === firstVoice) ?? form.brandTone;
     const preferredCta = primaryCtaOptions.find((option) => option === brand.preferred_cta) ?? form.primaryCta;
+    const constraints = [
+      ...(brand.approved_claims?.length ? [`Approved claims: ${brand.approved_claims.join("; ")}`] : []),
+      ...(brand.banned_phrases?.length ? [`Avoid: ${brand.banned_phrases.join("; ")}`] : []),
+      ...(brand.color_notes ? [`Visual notes: ${brand.color_notes}`] : []),
+    ].join("\n");
 
     setForm((current) => autoFillForm({
       ...current,
       targetAudience: brand.target_audience || current.targetAudience,
       brandTone,
       primaryCta: preferredCta,
+      styleDirection: brand.color_notes || current.styleDirection,
+      keyConstraints: constraints || current.keyConstraints,
     }));
-    setAssistMessage(`Applied ${brand.name}. Review the pre-filled audience and tone below.`);
+    setAssistMessage(`Applied ${brand.name}. Review the pre-filled audience, tone, CTA, and constraints below.`);
   };
 
   const saveCurrentAsBrand = async () => {
@@ -1505,6 +1520,10 @@ export function GenerateCampaignForm() {
         </div>
 
         <section style={{ marginBottom: "24px" }}>
+          <div className="workflow-strip" aria-label="MVP Workflow">
+            <span className="workflow-strip-label">MVP Workflow</span>
+            <span className="workflow-strip-copy">Idea → Brand Context → Content Brief → Content Package → Image Prompt → Video Prompt → Export</span>
+          </div>
           <p className="step-header-kicker">
             Step {step} of 4
           </p>
@@ -1727,9 +1746,9 @@ export function GenerateCampaignForm() {
           {step === 1 && (
             <>
               <Field
-                label="Offer name"
+                label="Project title"
                 inputId="offer-name"
-                helper="Use the name a buyer would recognize instantly."
+                helper="Use the working title you want attached to this content package."
                 error={shouldShowError("offerName") ? fieldErrors.offerName : undefined}
                 suggestionTag={suggestedBy.offerName}
                 highlighted={Boolean(highlightedFields.offerName)}
@@ -1813,7 +1832,7 @@ export function GenerateCampaignForm() {
               </div>
 
               <Field
-                label="Description"
+                label="Main offer"
                 inputId="description"
                 labelHelper="What’s the outcome or transformation?"
                 helper={profile.descriptionHint}
@@ -1980,9 +1999,100 @@ export function GenerateCampaignForm() {
 
           {step === 3 && (
             <>
+              <div className="callout callout-subtle">
+                <span className="callout-label">Content Brief</span>
+                <p className="callout-copy">
+                  This brief becomes the source of truth for the content package, image prompt, video prompt, voiceover, music direction, and review checklist.
+                </p>
+              </div>
+
+              <div className="review-card" style={{ background: "#FAFBFC" }}>
+                <div className="review-card-header">
+                  <div>
+                    <p className="review-card-title">Brief context</p>
+                    <p className="review-card-summary">These fields come from the project and audience steps.</p>
+                  </div>
+                  <button type="button" onClick={() => goToStep(1)} className="btn-ghost" aria-label="Edit project context">
+                    Edit
+                  </button>
+                </div>
+                <dl className="review-list">
+                  <div className="review-list-row">
+                    <dt>Project title / offer name</dt>
+                    <dd>{form.offerName || "Add project title"}</dd>
+                  </div>
+                  <div className="review-list-row">
+                    <dt>Target audience</dt>
+                    <dd>{form.targetAudience || "Add target audience"}</dd>
+                  </div>
+                  <div className="review-list-row">
+                    <dt>Main offer</dt>
+                    <dd>{form.description || "Add main offer"}</dd>
+                  </div>
+                </dl>
+              </div>
+
               <div style={{ display: "grid", gap: "16px" }} className="sm:grid-cols-2">
                 <Field
-                  label="Primary CTA"
+                  label="Content type"
+                  inputId="content-type"
+                  helper="Name the format this package should optimize for."
+                  suggestionTag={suggestedBy.contentType}
+                  highlighted={Boolean(highlightedFields.contentType)}
+                  optional
+                >
+                  <input
+                    id="content-type"
+                    value={form.contentType ?? ""}
+                    onChange={(event) => setField("contentType", event.target.value)}
+                    className="input"
+                    placeholder="Campaign package, launch promo, product story..."
+                  />
+                </Field>
+
+                <Field
+                  label="Target platform"
+                  inputId="target-platform"
+                  helper="Choose a primary destination while still generating selected outputs below."
+                  suggestionTag={suggestedBy.targetPlatform}
+                  highlighted={Boolean(highlightedFields.targetPlatform)}
+                  optional
+                >
+                  <select
+                    id="target-platform"
+                    value={form.targetPlatform ?? "Multi-platform"}
+                    onChange={(event) => setField("targetPlatform", event.target.value)}
+                    className="input select-input"
+                    style={{ cursor: "pointer" }}
+                  >
+                    <option>Multi-platform</option>
+                    {platformOptions.map((platform) => (
+                      <option key={platform.key}>{platform.label}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <Field
+                label="Campaign goal"
+                inputId="campaign-goal"
+                helper="State the business or audience action this package should drive."
+                suggestionTag={suggestedBy.campaignGoal}
+                highlighted={Boolean(highlightedFields.campaignGoal)}
+                optional
+              >
+                <input
+                  id="campaign-goal"
+                  value={form.campaignGoal ?? ""}
+                  onChange={(event) => setField("campaignGoal", event.target.value)}
+                  className="input"
+                  placeholder="Drive qualified clicks, launch a new product, book discovery calls..."
+                />
+              </Field>
+
+              <div style={{ display: "grid", gap: "16px" }} className="sm:grid-cols-2">
+                <Field
+                  label="CTA"
                   inputId="primary-cta"
                   helper="Choose the main action you want this campaign to drive."
                   suggestionTag={suggestedBy.primaryCta}
@@ -2039,6 +2149,59 @@ export function GenerateCampaignForm() {
                   />
                 </Field>
               </div>
+
+              <div style={{ display: "grid", gap: "16px" }} className="sm:grid-cols-2">
+                <Field
+                  label="Style direction"
+                  inputId="style-direction"
+                  helper="Guide the feel of copy, image prompts, video prompts, and music direction."
+                  suggestionTag={suggestedBy.styleDirection}
+                  highlighted={Boolean(highlightedFields.styleDirection)}
+                  optional
+                >
+                  <textarea
+                    id="style-direction"
+                    value={form.styleDirection ?? ""}
+                    onChange={(event) => setField("styleDirection", event.target.value)}
+                    className="input"
+                    placeholder="Clean, premium, founder-led, high-contrast visuals, practical language..."
+                  />
+                </Field>
+
+                <Field
+                  label="Key constraints"
+                  inputId="key-constraints"
+                  helper="Add brand rules, claims to avoid, required phrases, or compliance notes."
+                  suggestionTag={suggestedBy.keyConstraints}
+                  highlighted={Boolean(highlightedFields.keyConstraints)}
+                  optional
+                >
+                  <textarea
+                    id="key-constraints"
+                    value={form.keyConstraints ?? ""}
+                    onChange={(event) => setField("keyConstraints", event.target.value)}
+                    className="input"
+                    placeholder="Avoid unsupported claims, keep tone practical, mention approved proof only..."
+                  />
+                </Field>
+              </div>
+
+              <Field
+                label="Desired outputs"
+                inputId="desired-outputs"
+                helper="Clarify what the package must include for export."
+                suggestionTag={suggestedBy.desiredOutputs}
+                highlighted={Boolean(highlightedFields.desiredOutputs)}
+                optional
+              >
+                <input
+                  id="desired-outputs"
+                  value={form.desiredOutputs ?? ""}
+                  onChange={(event) => setField("desiredOutputs", event.target.value)}
+                  className="input"
+                  placeholder="Main copy, social caption, image prompt, video prompt, voiceover, music prompt..."
+                />
+              </Field>
 
               <Field
                 label="Platforms"
@@ -2103,12 +2266,13 @@ export function GenerateCampaignForm() {
               </div>
 
               <ReviewCard
-                title="Offer"
+                title="Project"
                 summary={normalized.description}
                 meta={[normalized.category, `$${normalized.price}`]}
                 rows={[
-                  ["Name", normalized.offerName],
-                  ["Description", normalized.description],
+                  ["Project title", normalized.offerName],
+                  ["Main offer", normalized.description],
+                  ["Content type", normalized.contentType || "Campaign package"],
                 ]}
                 onEdit={() => goToStep(1)}
               />
@@ -2124,12 +2288,16 @@ export function GenerateCampaignForm() {
                 onEdit={() => goToStep(2)}
               />
               <ReviewCard
-                title="Campaign"
-                summary={`${normalized.brandTone} tone with ${normalized.primaryCta} as the primary action.`}
-                meta={normalized.platforms.map((platform) => PLATFORM_LABELS[platform])}
+                title="Content Brief"
+                summary={`${normalized.campaignGoal || "Drive qualified action from the right audience"} with a ${normalized.brandTone.toLowerCase()} tone.`}
+                meta={[normalized.targetPlatform || "Multi-platform", ...normalized.platforms.map((platform) => PLATFORM_LABELS[platform])]}
                 rows={[
+                  ["Campaign goal", normalized.campaignGoal || "Drive qualified action from the right audience"],
                   ["Primary CTA", normalized.primaryCta],
                   ["Brand tone", normalized.brandTone],
+                  ["Style direction", normalized.styleDirection || "Clean, conversion-focused, and easy to adapt"],
+                  ["Key constraints", normalized.keyConstraints || "No extra constraints added"],
+                  ["Desired outputs", normalized.desiredOutputs || "Content package, image prompt, video prompt, voiceover script, and music prompt"],
                   ["Platforms", normalized.platforms.map((platform) => PLATFORM_LABELS[platform]).join(", ")],
                 ]}
                 onEdit={() => goToStep(3)}

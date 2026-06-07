@@ -4,6 +4,9 @@ import type { OfferFormData, PrimaryCta } from "@/lib/types";
 
 export const StrategySchema = z.object({
   offerName: z.string().min(2).max(200),
+  contentType: z.string().max(100).optional(),
+  targetPlatform: z.string().max(100).optional(),
+  campaignGoal: z.string().max(240).optional(),
   category: z.enum([
     "Physical Product",
     "Digital Product",
@@ -19,6 +22,9 @@ export const StrategySchema = z.object({
   socialProof: z.string().max(300).optional(),
   cta: z.string().min(2).max(50),
   brandTone: z.string().min(2).max(50),
+  styleDirection: z.string().max(300).optional(),
+  keyConstraints: z.string().max(500).optional(),
+  desiredOutputs: z.string().max(300).optional(),
   platforms: z.array(z.string()).min(1).max(8),
 });
 
@@ -66,6 +72,9 @@ export function toOfferFormData(value: StrategyInput): OfferFormData {
     sourceUrl: "",
     inputType: "manual",
     offerName: value.offerName,
+    contentType: value.contentType,
+    targetPlatform: value.targetPlatform,
+    campaignGoal: value.campaignGoal,
     category: value.category,
     price: Number(value.price.replace(/[^0-9.]/g, "")) || 0,
     description: value.description,
@@ -75,6 +84,9 @@ export function toOfferFormData(value: StrategyInput): OfferFormData {
     socialProof: value.socialProof ?? "",
     primaryCta: value.cta as PrimaryCta,
     brandTone: value.brandTone as OfferFormData["brandTone"],
+    styleDirection: value.styleDirection,
+    keyConstraints: value.keyConstraints,
+    desiredOutputs: value.desiredOutputs,
     platforms: value.platforms as OfferFormData["platforms"],
   };
 }

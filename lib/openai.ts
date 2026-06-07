@@ -7,6 +7,8 @@ import {
   AssistRequestBody,
   AssistResponseBody,
   BrandTone,
+  ContentBrief,
+  ContentPackageContent,
   GenerateResponseBody,
   GenerateRequestBody,
   GeneratedContent,
@@ -70,7 +72,43 @@ TOP BENEFITS: ${offerData.benefits.join(" | ")}
 SOCIAL PROOF: ${offerData.socialProof || "None provided"}
 PRIMARY CTA: ${offerData.primaryCta}
 BRAND TONE: ${offerData.brandTone}
+CONTENT TYPE: ${offerData.contentType || "Campaign package"}
+TARGET PLATFORM: ${offerData.targetPlatform || offerData.platforms.join(", ")}
+CAMPAIGN GOAL: ${offerData.campaignGoal || "Drive qualified action from the right audience"}
+STYLE DIRECTION: ${offerData.styleDirection || "Clean, conversion-focused, and easy to adapt"}
+KEY CONSTRAINTS: ${offerData.keyConstraints || "Keep claims specific, credible, and easy for a human to review before publishing."}
+DESIRED OUTPUTS: ${offerData.desiredOutputs || "Content package, image prompt, video prompt, voiceover script, and music prompt"}
 PLATFORMS: ${offerData.platforms.join(", ")}`;
+}
+
+function buildContentBrief(offerData: OfferFormData): ContentBrief {
+  return {
+    projectTitle: offerData.offerName,
+    contentType: offerData.contentType || "Campaign package",
+    targetPlatform: offerData.targetPlatform || offerData.platforms.join(", "),
+    campaignGoal: offerData.campaignGoal || "Drive qualified action from the right audience",
+    targetAudience: offerData.targetAudience,
+    mainOffer: offerData.description,
+    brandTone: offerData.brandTone,
+    styleDirection: offerData.styleDirection || "Clean, conversion-focused, and easy to adapt",
+    keyConstraints: offerData.keyConstraints || "Keep claims specific, credible, and easy for a human to review before publishing.",
+    cta: offerData.primaryCta,
+    desiredOutputs: offerData.desiredOutputs || "Content package, image prompt, video prompt, voiceover script, and music prompt",
+  };
+}
+
+function formatContentBrief(brief: ContentBrief) {
+  return `PROJECT TITLE: ${brief.projectTitle}
+CONTENT TYPE: ${brief.contentType}
+TARGET PLATFORM: ${brief.targetPlatform}
+CAMPAIGN GOAL: ${brief.campaignGoal}
+TARGET AUDIENCE: ${brief.targetAudience}
+MAIN OFFER: ${brief.mainOffer}
+BRAND TONE: ${brief.brandTone}
+STYLE DIRECTION: ${brief.styleDirection}
+KEY CONSTRAINTS: ${brief.keyConstraints}
+CTA: ${brief.cta}
+DESIRED OUTPUTS: ${brief.desiredOutputs}`;
 }
 
 function formatAssistInput(offerData: Partial<AssistRequestBody["offerData"]>, idea?: string) {
@@ -438,6 +476,42 @@ function sanitizePlatformContent(platform: PlatformKey, value: unknown): Generat
       button: compactString(finalCta.button, "Get Started"),
       urgency: compactString(finalCta.urgency, "Give them a simple reason to act now."),
     },
+  };
+}
+
+function sanitizeContentPackage(value: unknown, offerData: OfferFormData, strategyBrief: StrategyBrief): ContentPackageContent {
+  const raw = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+
+  return {
+    strategySummary: compactString(
+      raw.strategySummary,
+      `${strategyBrief.positioningSummary} Lead with ${strategyBrief.primaryEmotionalHook.toLowerCase()}`,
+    ),
+    mainCopy: compactString(
+      raw.mainCopy,
+      `${offerData.offerName} helps ${offerData.targetAudience} move past ${offerData.painPoint.toLowerCase()} ${offerData.description} ${offerData.primaryCta}.`,
+    ),
+    shortSocialCaption: compactString(
+      raw.shortSocialCaption,
+      `${offerData.offerName} gives ${offerData.targetAudience} a clearer way forward. ${offerData.primaryCta}.`,
+    ),
+    aiImagePrompt: compactString(
+      raw.aiImagePrompt,
+      `Commercial marketing image for ${offerData.offerName}, showing the main buyer outcome for ${offerData.targetAudience}, ${offerData.styleDirection || "clean conversion-focused style"}, high-quality lighting, clear composition, no distorted text.`,
+    ),
+    aiVideoPrompt: compactString(
+      raw.aiVideoPrompt,
+      `Short vertical marketing video for ${offerData.offerName}: open with the buyer pain, reveal the offer, show the outcome, end with ${offerData.primaryCta}. Style: ${offerData.styleDirection || "clean and conversion-focused"}.`,
+    ),
+    voiceoverScript: compactString(
+      raw.voiceoverScript,
+      `If ${offerData.targetAudience} are tired of ${offerData.painPoint.toLowerCase()}, ${offerData.offerName} gives them a clearer next step. ${offerData.primaryCta}.`,
+    ),
+    musicPrompt: compactString(
+      raw.musicPrompt,
+      `Modern, brand-safe background music for a ${offerData.brandTone.toLowerCase()} marketing video: steady momentum, clean mix, supportive but not distracting, suitable for voiceover.`,
+    ),
+    humanReviewChecklist: compactStringArray(raw.humanReviewChecklist, 5, "Review item").slice(0, 8),
   };
 }
 
@@ -901,6 +975,50 @@ Return only valid JSON. No markdown. No explanation.`;
   return sanitizePlatformContent(platform, raw);
 }
 
+async function generateContentPackage(
+  offerData: OfferFormData,
+  strategyBrief: StrategyBrief,
+): Promise<ContentPackageContent> {
+  const contentBrief = buildContentBrief(offerData);
+  const prompt = `Use this content brief and strategy brief to create the universal content package that sits above every platform-specific output.
+
+CONTENT BRIEF:
+${formatContentBrief(contentBrief)}
+
+STRATEGY BRIEF:
+${JSON.stringify(strategyBrief, null, 2)}
+
+Return valid JSON matching this exact structure:
+{
+  strategySummary: string,
+  mainCopy: string,
+  shortSocialCaption: string,
+  aiImagePrompt: string,
+  aiVideoPrompt: string,
+  voiceoverScript: string,
+  musicPrompt: string,
+  humanReviewChecklist: [string]
+}
+
+Requirements:
+- Main Copy should be a polished core message that can be reused across channels.
+- Short Social Caption should be concise and ready to paste into social.
+- AI Image Prompt and AI Video Prompt are prompts only; do not imply an image or video was generated.
+- Voiceover Script should be usable for a short ad or product explainer.
+- Music Prompt should describe background music direction, mood, tempo, and usage fit.
+- Human Review Checklist should include 5-8 concrete checks for claims, brand fit, CTA, platform compliance, and final approval.
+
+Return only valid JSON. No markdown. No explanation.`;
+
+  const raw = await requestStructuredJson<unknown>(
+    "You are a senior content producer building a complete, review-ready campaign package from a content brief. You create text, prompts, and review checklists only; you do not claim media assets have been generated.",
+    prompt,
+    1400,
+  );
+
+  return sanitizeContentPackage(raw, offerData, strategyBrief);
+}
+
 export async function generatePlatformPack(body: GenerateRequestBody): Promise<GenerateResponseBody> {
   const settled = await Promise.allSettled(
     body.platforms.map(async (platform) => {
@@ -939,6 +1057,18 @@ export async function generatePlatformPack(body: GenerateRequestBody): Promise<G
 
   if (Object.keys(generatedContent).length === 0) {
     throw new Error("Content generation failed for every selected platform. Please try again.");
+  }
+
+  generatedContent.contentBrief = buildContentBrief(body.offerData);
+
+  try {
+    generatedContent.contentPackage = await generateContentPackage(
+      body.offerData,
+      body.strategyBrief,
+    );
+  } catch (error) {
+    console.error("Content package generation fell back to deterministic package.", error);
+    generatedContent.contentPackage = sanitizeContentPackage(null, body.offerData, body.strategyBrief);
   }
 
   return {

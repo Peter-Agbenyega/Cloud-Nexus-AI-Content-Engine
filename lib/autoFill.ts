@@ -151,6 +151,9 @@ export function autoFillForm(form: OfferFormInput): OfferFormInput {
     sourceUrl: safeText(form.sourceUrl),
     inputType: form.inputType || "manual",
     offerName: safeText(form.offerName),
+    contentType: safeText(form.contentType) || "Campaign package",
+    targetPlatform: safeText(form.targetPlatform) || "Multi-platform",
+    campaignGoal: safeText(form.campaignGoal) || "Drive qualified action from the right audience",
     category,
     price: safeText(form.price) || "29",
     description: safeText(form.description),
@@ -164,6 +167,9 @@ export function autoFillForm(form: OfferFormInput): OfferFormInput {
     socialProof: safeText(form.socialProof),
     primaryCta: form.primaryCta || "Buy Now",
     brandTone: form.brandTone || "Professional",
+    styleDirection: safeText(form.styleDirection) || "Clean, conversion-focused, and easy to adapt",
+    keyConstraints: safeText(form.keyConstraints),
+    desiredOutputs: safeText(form.desiredOutputs) || "Content package, image prompt, video prompt, voiceover script, and music prompt",
     platforms: form.platforms.length > 0 ? form.platforms : inferPlatforms(category),
   };
 
@@ -206,6 +212,9 @@ export function buildReliableFormPayload(form: OfferFormInput): OfferFormInput {
   const seeded: OfferFormInput = {
     ...form,
     category: form.category || "Physical Product",
+    contentType: safeText(form.contentType) || "Campaign package",
+    targetPlatform: safeText(form.targetPlatform) || "Multi-platform",
+    campaignGoal: safeText(form.campaignGoal) || "Drive qualified action from the right audience",
     price: safeText(form.price) || "29",
     description: safeText(form.description),
     targetAudience: safeText(form.targetAudience),
@@ -218,6 +227,9 @@ export function buildReliableFormPayload(form: OfferFormInput): OfferFormInput {
     socialProof: safeText(form.socialProof),
     primaryCta: form.primaryCta || "Buy Now",
     brandTone: form.brandTone || "Professional",
+    styleDirection: safeText(form.styleDirection) || "Clean, conversion-focused, and easy to adapt",
+    keyConstraints: safeText(form.keyConstraints),
+    desiredOutputs: safeText(form.desiredOutputs) || "Content package, image prompt, video prompt, voiceover script, and music prompt",
     platforms: form.platforms.length > 0 ? form.platforms : inferPlatforms(form.category || "Physical Product"),
   };
 
@@ -235,6 +247,9 @@ export function normalizeReliableOfferInput(input: OfferFormInput): OfferFormDat
     sourceUrl: safe.sourceUrl,
     inputType: safe.inputType || "manual",
     offerName: safe.offerName || "Untitled Offer",
+    contentType: safe.contentType || "Campaign package",
+    targetPlatform: safe.targetPlatform || "Multi-platform",
+    campaignGoal: safe.campaignGoal || "Drive qualified action from the right audience",
     category: safe.category,
     price: Number(safe.price || 29),
     description: safe.description || DEFAULT_DESCRIPTION,
@@ -244,6 +259,9 @@ export function normalizeReliableOfferInput(input: OfferFormInput): OfferFormDat
     socialProof: safe.socialProof,
     primaryCta: safe.primaryCta || inferCTA(safe),
     brandTone: safe.brandTone || "Professional",
+    styleDirection: safe.styleDirection || "Clean, conversion-focused, and easy to adapt",
+    keyConstraints: safe.keyConstraints || "",
+    desiredOutputs: safe.desiredOutputs || "Content package, image prompt, video prompt, voiceover script, and music prompt",
     platforms: safe.platforms.length > 0 ? safe.platforms : inferPlatforms(safe.category),
   };
 }

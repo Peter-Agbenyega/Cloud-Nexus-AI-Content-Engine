@@ -3,6 +3,8 @@ import { jsPDF } from "jspdf";
 import { PLATFORM_LABELS } from "@/lib/constants";
 import {
   CampaignRecord,
+  ContentBrief,
+  ContentPackageContent,
   ContentCalendarContent,
   FacebookAdsContent,
   PlatformKey,
@@ -25,6 +27,50 @@ function cleanSlug(value: string) {
 function csvCell(value: unknown) {
   const text = String(value ?? "");
   return `"${text.replace(/"/g, '""')}"`;
+}
+
+function formatContentBrief(brief: ContentBrief) {
+  return [
+    `Project Title: ${brief.projectTitle}`,
+    `Content Type: ${brief.contentType}`,
+    `Target Platform: ${brief.targetPlatform}`,
+    `Campaign Goal: ${brief.campaignGoal}`,
+    `Target Audience: ${brief.targetAudience}`,
+    `Main Offer: ${brief.mainOffer}`,
+    `Brand Tone: ${brief.brandTone}`,
+    `Style Direction: ${brief.styleDirection}`,
+    `Key Constraints: ${brief.keyConstraints}`,
+    `CTA: ${brief.cta}`,
+    `Desired Outputs: ${brief.desiredOutputs}`,
+  ].join("\n");
+}
+
+function formatContentPackage(contentPackage: ContentPackageContent) {
+  return [
+    "Strategy Summary",
+    contentPackage.strategySummary,
+    "",
+    "Main Copy",
+    contentPackage.mainCopy,
+    "",
+    "Short Social Caption",
+    contentPackage.shortSocialCaption,
+    "",
+    "AI Image Prompt",
+    contentPackage.aiImagePrompt,
+    "",
+    "AI Video Prompt",
+    contentPackage.aiVideoPrompt,
+    "",
+    "Voiceover Script",
+    contentPackage.voiceoverScript,
+    "",
+    "Music Prompt",
+    contentPackage.musicPrompt,
+    "",
+    "Human Review Checklist",
+    contentPackage.humanReviewChecklist.map((item, index) => `${index + 1}. ${item}`).join("\n"),
+  ].join("\n");
 }
 
 export function exportAsPDF(campaign: Campaign): Blob {
@@ -73,7 +119,18 @@ export function exportAsPDF(campaign: Campaign): Blob {
   addText(`Primary hook: ${campaign.strategy_brief.primaryEmotionalHook}`);
   addText(`Recommended CTA: ${campaign.strategy_brief.recommendedCTA}`);
 
+  if (campaign.generated_content.contentBrief) {
+    addText("Content Brief", 16, true);
+    addText(formatContentBrief(campaign.generated_content.contentBrief), 9);
+  }
+
+  if (campaign.generated_content.contentPackage) {
+    addText("Content Package", 16, true);
+    addText(formatContentPackage(campaign.generated_content.contentPackage), 9);
+  }
+
   Object.entries(campaign.generated_content).forEach(([platform, content]) => {
+    if (platform === "contentBrief" || platform === "contentPackage") return;
     addText(PLATFORM_LABELS[platform as PlatformKey] ?? platform, 16, true);
     addText(stringifyContent(content), 9);
   });
@@ -108,14 +165,25 @@ export function exportAsText(campaign: Campaign): string {
     "=== Commerce Scores ===",
     stringifyContent(campaign.commerce_scores),
     "",
-    "=== Generated Content ===",
   ];
 
-  for (const [platform, content] of Object.entries(campaign.generated_content) as [
-    PlatformKey,
-    unknown,
-  ][]) {
-    sections.push(`-- ${PLATFORM_LABELS[platform]} --`);
+  if (campaign.generated_content.contentBrief) {
+    sections.push("=== Content Brief ===");
+    sections.push(formatContentBrief(campaign.generated_content.contentBrief));
+    sections.push("");
+  }
+
+  if (campaign.generated_content.contentPackage) {
+    sections.push("=== Content Package ===");
+    sections.push(formatContentPackage(campaign.generated_content.contentPackage));
+    sections.push("");
+  }
+
+  sections.push("=== Generated Content ===");
+
+  for (const [platform, content] of Object.entries(campaign.generated_content)) {
+    if (platform === "contentBrief" || platform === "contentPackage") continue;
+    sections.push(`-- ${PLATFORM_LABELS[platform as PlatformKey] ?? platform} --`);
     sections.push(stringifyContent(content));
     sections.push("");
   }
