@@ -974,11 +974,10 @@ export function GenerateCampaignForm() {
       setUrlExtractMessage("We found your product details. Review and edit below.");
     } catch (error) {
       setUrlExtractState("error");
-      setUrlExtractMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not analyze that URL. You can still continue manually.",
-      );
+      const message = error instanceof Error
+        ? error.message
+        : "Could not analyze that URL.";
+      setUrlExtractMessage(`${message} You can still type the offer manually and generate the campaign pack.`);
     }
   };
 
@@ -1452,11 +1451,11 @@ export function GenerateCampaignForm() {
 
   const WORKFLOW_STEPS = [
     { label: "Idea", doneAt: 2 },
-    { label: "Brand", doneAt: 3 },
-    { label: "Brief", doneAt: 4 },
-    { label: "Package", doneAt: 5 },
-    { label: "Image", doneAt: 5 },
-    { label: "Video", doneAt: 5 },
+    { label: "Brand Context", doneAt: 3 },
+    { label: "Content Brief", doneAt: 4 },
+    { label: "Content Package", doneAt: 5 },
+    { label: "Image Prompt", doneAt: 5 },
+    { label: "Video Prompt", doneAt: 5 },
     { label: "Export", doneAt: 5 },
   ];
 
@@ -1563,6 +1562,9 @@ export function GenerateCampaignForm() {
           <h1 className="step-header-title">
             {STEP_META[step - 1].heading}
           </h1>
+          <p className="step-header-copy" style={{ fontWeight: 700, color: "#075985" }}>
+            Describe your offer in one sentence — or paste a URL — and get a complete campaign pack in about 60 seconds.
+          </p>
           <p className="step-header-copy">
             {STEP_META[step - 1].sub}
           </p>

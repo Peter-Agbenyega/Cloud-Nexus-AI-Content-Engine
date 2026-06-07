@@ -171,7 +171,7 @@ export function BrandsClient() {
             ))}
             {brands.length === 0 && (
               <div style={{ background: "white", border: "1px dashed #CBD5E1", borderRadius: "8px", padding: "22px", color: "#64748B" }}>
-                No brand profiles saved yet.
+                Save a brand once. Never re-explain your business again.
               </div>
             )}
           </div>

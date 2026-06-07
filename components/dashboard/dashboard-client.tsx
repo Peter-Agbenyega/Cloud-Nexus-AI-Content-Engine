@@ -152,10 +152,10 @@ export function DashboardClient() {
               </svg>
             </div>
             <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#111827", margin: "0 0 6px" }}>
-              No campaigns yet
+              No campaigns yet. Your first one takes about 60 seconds →
             </h2>
             <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", margin: "0 0 20px" }}>
-              Generate your first campaign to see it here
+              Describe one offer and Cloud Nexus AI will build the campaign pack, prompts, voiceover, music direction, and exports.
             </p>
             <Link href="/generate" className="btn-primary" style={{ display: "inline-flex" }}>
               Generate a Campaign →

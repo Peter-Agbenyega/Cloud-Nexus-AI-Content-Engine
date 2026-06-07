@@ -17,14 +17,8 @@ import { checkCampaignLimit } from "@/lib/usage";
 export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request);
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized", code: "AUTH_REQUIRED" },
-        { status: 401 },
-      );
-    }
 
-    const rateLimit = await checkRateLimit(getRateLimitIdentifier(request, user.id));
+    const rateLimit = await checkRateLimit(getRateLimitIdentifier(request, user?.id));
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: "Too many requests", code: "RATE_LIMITED", retryAfter: 60 },
@@ -52,16 +46,18 @@ export async function POST(request: NextRequest) {
       offerData: toOfferFormData(parsed.data.offerData),
     };
 
-    const campaignLimit = await checkCampaignLimit(user.id);
-    if (!campaignLimit.allowed) {
-      return NextResponse.json(
-        {
-          error: campaignLimit.reason,
-          code: "LIMIT_REACHED",
-          plan: campaignLimit.plan,
-        },
-        { status: 403 },
-      );
+    if (user) {
+      const campaignLimit = await checkCampaignLimit(user.id);
+      if (!campaignLimit.allowed) {
+        return NextResponse.json(
+          {
+            error: campaignLimit.reason,
+            code: "LIMIT_REACHED",
+            plan: campaignLimit.plan,
+          },
+          { status: 403 },
+        );
+      }
     }
 
     const validationErrors = validateNormalizedOfferData(body.offerData);

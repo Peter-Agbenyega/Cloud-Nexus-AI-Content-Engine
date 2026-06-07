@@ -481,6 +481,19 @@ function sanitizePlatformContent(platform: PlatformKey, value: unknown): Generat
 
 function sanitizeContentPackage(value: unknown, offerData: OfferFormData, strategyBrief: StrategyBrief): ContentPackageContent {
   const raw = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  const categoryRisk =
+    offerData.category === "Physical Product"
+      ? "verify no unsupported health, safety, durability, or environmental claims"
+      : offerData.category === "SaaS"
+        ? "verify feature claims, integrations, uptime, and workflow promises are accurate"
+        : offerData.category === "Service"
+          ? "verify delivery timelines, guarantees, and client-result claims are supportable"
+          : offerData.category === "Course"
+            ? "verify income, certification, skill-outcome, and transformation claims are not overstated"
+            : "verify download contents, licensing rights, templates, and outcome promises are accurate";
+  const imageFallback = `Commercial marketing image for ${offerData.offerName}: show the product or offer as the unmistakable subject in a real usage moment for ${offerData.targetAudience}. Setting: clean modern environment tied to the buyer's daily context. Composition: hero subject in the foreground with useful negative space for ad text, three-quarter angle, crisp product detail, natural human hand interaction if relevant. Lens/framing: 50mm editorial product photography, eye-level, tight medium frame. Lighting: soft directional daylight with subtle rim light. Color grade: ${offerData.styleDirection || "clean, high-trust, conversion-focused tones"}. Mood: practical, credible, premium without looking staged. Style reference: polished DTC ecommerce campaign photography. Aspect ratio: 4:5 vertical. Avoid distorted text, fake logos, clutter, and exaggerated claims.`;
+  const videoFallback = `Vertical marketing video prompt for ${offerData.offerName}, duration 15 seconds, aspect ratio 9:16. Opening frame 0:00-0:02: close-up of the buyer frustration, showing ${offerData.targetAudience} dealing with ${offerData.painPoint}. Camera pushes in slowly. 0:02-0:05: quick product reveal with ${offerData.offerName} entering frame, clean match cut, bright practical lighting. 0:05-0:10: three benefit moments shown as fast scenes, each with one concrete visual outcome. 0:10-0:13: proof or trust cue appears naturally without fake metrics. 0:13-0:15: final product beauty shot, steady camera, clear ${offerData.primaryCta}. Visual style: ${offerData.styleDirection || "clean DTC commercial"}, fast but readable pacing, natural motion, no copyrighted references.`;
+  const checklist = compactStringArray(raw.humanReviewChecklist, 0, "Review item");
 
   return {
     strategySummary: compactString(
@@ -497,21 +510,32 @@ function sanitizeContentPackage(value: unknown, offerData: OfferFormData, strate
     ),
     aiImagePrompt: compactString(
       raw.aiImagePrompt,
-      `Commercial marketing image for ${offerData.offerName}, showing the main buyer outcome for ${offerData.targetAudience}, ${offerData.styleDirection || "clean conversion-focused style"}, high-quality lighting, clear composition, no distorted text.`,
+      imageFallback,
     ),
     aiVideoPrompt: compactString(
       raw.aiVideoPrompt,
-      `Short vertical marketing video for ${offerData.offerName}: open with the buyer pain, reveal the offer, show the outcome, end with ${offerData.primaryCta}. Style: ${offerData.styleDirection || "clean and conversion-focused"}.`,
+      videoFallback,
     ),
     voiceoverScript: compactString(
       raw.voiceoverScript,
-      `If ${offerData.targetAudience} are tired of ${offerData.painPoint.toLowerCase()}, ${offerData.offerName} gives them a clearer next step. ${offerData.primaryCta}.`,
+      `[slow down] ${offerData.offerName} is for ${offerData.targetAudience}. [pause] If ${offerData.painPoint.toLowerCase()} keeps getting in the way, this gives you a more practical next step. [emphasis] ${offerData.description} [pause] ${offerData.primaryCta}.`,
     ),
     musicPrompt: compactString(
       raw.musicPrompt,
-      `Modern, brand-safe background music for a ${offerData.brandTone.toLowerCase()} marketing video: steady momentum, clean mix, supportive but not distracting, suitable for voiceover.`,
+      `Tempo 96 BPM, modern ${offerData.brandTone.toLowerCase()} commercial bed, warm percussion, soft bass pulse, light keys, and subtle plucked texture. Mood arc: start calm and curious, build with quiet momentum during the product reveal, end confident and resolved. Energy level 6/10, mixed to sit under voiceover, brand-safe, no copyrighted track references.`,
     ),
-    humanReviewChecklist: compactStringArray(raw.humanReviewChecklist, 5, "Review item").slice(0, 8),
+    humanReviewChecklist: (
+      checklist.length >= 5
+        ? checklist
+        : [
+          `Confirm ${offerData.offerName} appears in the first line of the main copy and caption.`,
+          `Check that the audience pain language matches: ${offerData.painPoint}.`,
+          `Review category compliance: ${categoryRisk}.`,
+          `Verify the CTA "${offerData.primaryCta}" matches the destination and button copy.`,
+          "Confirm image/video prompts do not imply generated media exists and contain no copyrighted references.",
+          "Check every proof point against real available evidence before publishing.",
+        ]
+    ).slice(0, 8),
   };
 }
 
@@ -1001,17 +1025,20 @@ Return valid JSON matching this exact structure:
 }
 
 Requirements:
-- Main Copy should be a polished core message that can be reused across channels.
-- Short Social Caption should be concise and ready to paste into social.
-- AI Image Prompt and AI Video Prompt are prompts only; do not imply an image or video was generated.
-- Voiceover Script should be usable for a short ad or product explainer.
-- Music Prompt should describe background music direction, mood, tempo, and usage fit.
-- Human Review Checklist should include 5-8 concrete checks for claims, brand fit, CTA, platform compliance, and final approval.
+- Main Copy should be a polished core message that can be reused across channels. It must begin with the product name and mirror the audience pain language.
+- Short Social Caption should be concise, platform-native, and ready to paste into social.
+- AI Image Prompt must be production-grade, minimum 80 words, and include subject, setting, composition, lens/framing, lighting, color grade, mood, style reference, and aspect ratio.
+- AI Video Prompt must be scene-structured with opening frame, camera movement, scene progression with timestamps, visual style, pacing, aspect ratio, and duration.
+- Voiceover Script must read naturally aloud and include pace notes like [pause], [emphasis], and [slow down].
+- Music Prompt must include tempo BPM, genre, key instruments, mood arc (start→build→end), energy level, and style description without naming copyrighted tracks.
+- Human Review Checklist should include 5-8 concrete checks specific to the platform and offer category, including compliance-aware checks for claims.
+- Do not use these banned phrases: game-changer, unleash, elevate, revolutionize, unlock, supercharge, take X to the next level, look no further, in today's fast-paced world.
+- Before responding, silently evaluate your draft against this question: would a senior creative director at a top agency approve this? If not, improve it before returning.
 
 Return only valid JSON. No markdown. No explanation.`;
 
   const raw = await requestStructuredJson<unknown>(
-    "You are a senior content producer building a complete, review-ready campaign package from a content brief. You create text, prompts, and review checklists only; you do not claim media assets have been generated.",
+    "You are a senior content producer building a complete, review-ready campaign package from a content brief. You create text, prompts, and review checklists only; you do not claim media assets have been generated. Use concrete specificity, category-aware compliance judgment, and top-agency creative standards.",
     prompt,
     1400,
   );
@@ -1054,10 +1081,6 @@ export async function generatePlatformPack(body: GenerateRequestBody): Promise<G
       message,
     });
   });
-
-  if (Object.keys(generatedContent).length === 0) {
-    throw new Error("Content generation failed for every selected platform. Please try again.");
-  }
 
   generatedContent.contentBrief = buildContentBrief(body.offerData);
 

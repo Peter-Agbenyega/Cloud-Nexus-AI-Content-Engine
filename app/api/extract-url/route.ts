@@ -2,7 +2,6 @@ import * as cheerio from "cheerio";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getUserFromRequest } from "@/lib/auth";
 import {
   extractAudienceSignal,
   extractBenefits,
@@ -40,15 +39,6 @@ function firstText(...values: Array<string | undefined>) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromRequest(request);
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized", code: "AUTH_REQUIRED" },
-        { status: 401 },
-      );
-    }
-
     const parsed = ExtractUrlSchema.safeParse(await request.json());
 
     if (!parsed.success) {
@@ -86,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: "Could not access URL", extracted: null },
+        { error: "We could not access that page. Try another public product URL or enter the offer manually.", extracted: null },
         { status: 400 },
       );
     }
@@ -143,7 +133,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("URL extraction failed.", error);
     return NextResponse.json(
-      { error: "Could not access URL", extracted: null },
+      { error: "We could not access that page. Try another public product URL or enter the offer manually.", extracted: null },
       { status: 400 },
     );
   }

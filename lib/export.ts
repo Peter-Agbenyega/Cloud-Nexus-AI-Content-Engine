@@ -193,7 +193,33 @@ export function exportAsText(campaign: Campaign): string {
 
 export function exportAsContentCalendar(campaign: Campaign): string {
   const calendar = campaign.generated_content["content-calendar"] as ContentCalendarContent | undefined;
-  const rows = ["Day,Date,Platform,Content Type,Hook,Notes,Hashtags"];
+  const rows = ["Section,Day,Date,Platform,Content Type,Hook,Notes,Hashtags"];
+
+  if (campaign.generated_content.contentBrief) {
+    rows.push([
+      csvCell("Content Brief"),
+      "",
+      "",
+      csvCell(campaign.generated_content.contentBrief.targetPlatform),
+      csvCell(campaign.generated_content.contentBrief.contentType),
+      csvCell(campaign.generated_content.contentBrief.campaignGoal),
+      csvCell(formatContentBrief(campaign.generated_content.contentBrief)),
+      "",
+    ].join(","));
+  }
+
+  if (campaign.generated_content.contentPackage) {
+    rows.push([
+      csvCell("Content Package"),
+      "",
+      "",
+      "",
+      csvCell("Universal campaign pack"),
+      csvCell(campaign.generated_content.contentPackage.shortSocialCaption),
+      csvCell(formatContentPackage(campaign.generated_content.contentPackage)),
+      "",
+    ].join(","));
+  }
 
   if (!calendar?.calendar?.length) {
     return rows.join("\n");
@@ -201,6 +227,7 @@ export function exportAsContentCalendar(campaign: Campaign): string {
 
   calendar.calendar.forEach((item) => {
     rows.push([
+      csvCell("Content Calendar"),
       item.day,
       csvCell(item.date),
       csvCell(item.platform),
@@ -217,6 +244,18 @@ export function exportAsContentCalendar(campaign: Campaign): string {
 export function exportAsMetaAds(campaign: Campaign): string {
   const ads = campaign.generated_content["facebook-meta-ads"] as FacebookAdsContent | undefined;
   const sections = [`Campaign Name: ${campaign.title}`, ""];
+
+  if (campaign.generated_content.contentBrief) {
+    sections.push("Content Brief");
+    sections.push(formatContentBrief(campaign.generated_content.contentBrief));
+    sections.push("");
+  }
+
+  if (campaign.generated_content.contentPackage) {
+    sections.push("Content Package");
+    sections.push(formatContentPackage(campaign.generated_content.contentPackage));
+    sections.push("");
+  }
 
   if (!ads?.variants?.length) {
     sections.push("No Facebook/Meta ad variants found.");

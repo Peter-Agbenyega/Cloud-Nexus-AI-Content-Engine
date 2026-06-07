@@ -37,15 +37,7 @@ npm install
 cp .env.example .env.local
 ```
 
-Required variables:
-
-```env
-OPENAI_API_KEY=
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
+Required variables are `OPENAI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `NEXT_PUBLIC_APP_URL`.
 
 3. Run the Supabase migration in `supabase/migrations/20260421_phase1.sql`.
 
@@ -56,6 +48,32 @@ npm run dev
 ```
 
 5. Open `http://localhost:3000`.
+
+## Quick Start for the Owner
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create `.env.local` from the template:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Fill the required variables in `.env.local`: `OPENAI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `NEXT_PUBLIC_APP_URL`.
+
+Stripe variables and Upstash Redis variables are optional for local campaign generation. Add Stripe only when testing paid billing, and add Upstash only when testing production rate limiting.
+
+4. Run the Supabase migrations in `supabase/migrations/` in date order.
+
+5. Start the app, open `/generate`, type one sentence about a product, and generate the campaign pack:
+
+```bash
+npm run dev
+```
 
 ## Database Schema
 
@@ -89,9 +107,9 @@ The `brands` table is included now for Phase 2 but has no UI yet.
   - `GET /api/campaigns` with a Supabase access token loads the signed-in user dashboard
   - `POST /api/campaigns` creates a campaign or attaches an existing one to the signed-in user
 
-## Stripe Stub
+## Stripe Notes
 
-Stripe is intentionally stubbed for Phase 1. See `lib/stripe.ts` for the placeholder hook point.
+Stripe checkout, billing portal, and webhook routes are present. Billing environment variables are optional for local campaign generation and required only when testing paid subscriptions.
 
 ## Verification
 
@@ -99,4 +117,5 @@ Run:
 
 ```bash
 npm run lint
+npm run build
 ```

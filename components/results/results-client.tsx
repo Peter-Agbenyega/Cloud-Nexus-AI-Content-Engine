@@ -45,9 +45,95 @@ const platformKeySet = new Set<PlatformKey>([
   "content-calendar",
   "creative-prompts",
 ]);
+const RESULTS_READY_TOAST_KEY = "cloud-nexus:results-ready-toast-shown";
 
 function isPlatformKey(value: string): value is PlatformKey {
   return platformKeySet.has(value as PlatformKey);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+function hasArray(record: Record<string, unknown>, key: string) {
+  return Array.isArray(record[key]);
+}
+
+function isUsablePlatformContent(platform: PlatformKey, content: unknown) {
+  if (!isRecord(content)) return false;
+
+  if (platform === "tiktok-reels") {
+    return hasArray(content, "hooks") && isRecord(content.script) && hasArray(content, "captionVariants");
+  }
+  if (platform === "facebook-meta-ads") return hasArray(content, "variants");
+  if (platform === "product-page-copy") return hasArray(content, "benefitBullets") && hasArray(content, "faqItems");
+  if (platform === "email-promo") return hasArray(content, "subjectLines") && isRecord(content.body);
+  if (platform === "landing-page") {
+    return isRecord(content.aboveFold) && isRecord(content.problemSection) && isRecord(content.solutionSection);
+  }
+  if (platform === "video-concepts") return hasArray(content, "concepts");
+  if (platform === "content-calendar") return hasArray(content, "calendar");
+  if (platform === "creative-prompts") {
+    return hasArray(content, "imagePrompts") && hasArray(content, "videoPrompts") && hasArray(content, "thumbnailPrompts");
+  }
+
+  return false;
+}
+
+function normalizeCampaignRecord(record: CampaignRecord): CampaignRecord {
+  const generatedContent = isRecord(record.generated_content) ? { ...record.generated_content } : {};
+  const offerData: Record<string, unknown> = isRecord(record.offer_data) ? record.offer_data : {};
+  const requestedPlatforms = Array.isArray(offerData.platforms)
+    ? offerData.platforms.filter((platform): platform is PlatformKey => typeof platform === "string" && isPlatformKey(platform))
+    : Object.keys(generatedContent).filter(isPlatformKey);
+
+  Object.keys(generatedContent).forEach((key) => {
+    if (isPlatformKey(key) && !isUsablePlatformContent(key, generatedContent[key])) {
+      delete generatedContent[key];
+    }
+  });
+
+  const strategyBrief: Record<string, unknown> = isRecord(record.strategy_brief) ? record.strategy_brief : {};
+  const topAngles = Array.isArray(strategyBrief.topAngles) ? strategyBrief.topAngles : [];
+  const topObjections = Array.isArray(strategyBrief.topObjections) ? strategyBrief.topObjections : [];
+  const bestChannels = Array.isArray(strategyBrief.bestChannels) ? strategyBrief.bestChannels : [];
+  const commerceScores: Record<string, unknown> = isRecord(record.commerce_scores) ? record.commerce_scores : {};
+  const metrics = Array.isArray(commerceScores.metrics) ? commerceScores.metrics : [];
+
+  return {
+    ...record,
+    offer_data: {
+      ...record.offer_data,
+      platforms: requestedPlatforms.length > 0 ? requestedPlatforms : Object.keys(generatedContent).filter(isPlatformKey),
+      benefits: (
+        Array.isArray(record.offer_data.benefits)
+          ? [
+            String(record.offer_data.benefits[0] ?? ""),
+            String(record.offer_data.benefits[1] ?? ""),
+            String(record.offer_data.benefits[2] ?? ""),
+          ]
+          : ["", "", ""]
+      ) as CampaignRecord["offer_data"]["benefits"],
+    },
+    strategy_brief: {
+      ...record.strategy_brief,
+      positioningSummary: String(strategyBrief.positioningSummary ?? "Strategy brief unavailable for this older campaign."),
+      primaryEmotionalHook: String(strategyBrief.primaryEmotionalHook ?? "Regenerate strategy to refresh this hook."),
+      audienceAwarenessLevel: String(strategyBrief.audienceAwarenessLevel ?? "problem-aware") as StrategyBrief["audienceAwarenessLevel"],
+      contentPriority: String(strategyBrief.contentPriority ?? "Regenerate this campaign to refresh content priority."),
+      recommendedCTA: String(strategyBrief.recommendedCTA ?? record.offer_data.primaryCta ?? "Learn More"),
+      topAngles: topAngles.slice(0, 3) as StrategyBrief["topAngles"],
+      topObjections: topObjections.slice(0, 3) as StrategyBrief["topObjections"],
+      bestChannels: bestChannels.map(String),
+    },
+    generated_content: generatedContent,
+    commerce_scores: {
+      ...record.commerce_scores,
+      overall: typeof commerceScores.overall === "number" ? commerceScores.overall : 0,
+      status: commerceScores.status === "green" || commerceScores.status === "amber" || commerceScores.status === "red" ? commerceScores.status : "red",
+      metrics: metrics as CampaignRecord["commerce_scores"]["metrics"],
+    },
+  };
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -884,9 +970,9 @@ export function ResultsClient({ campaignId }: { campaignId: string }) {
         const response = await fetch(`/api/campaigns?id=${campaignId}`);
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || "Unable to load campaign.");
-        const record = payload.campaign as CampaignRecord;
+        const record = normalizeCampaignRecord(payload.campaign as CampaignRecord);
         setCampaign(record);
-        setActivePlatform((Object.keys(record.generated_content)[0] as PlatformKey | undefined) ?? null);
+        setActivePlatform(record.offer_data.platforms[0] ?? (Object.keys(record.generated_content).find(isPlatformKey) ?? null));
       } catch (e) {
         setError(e instanceof Error ? e.message : "Unable to load campaign.");
       } finally {
@@ -896,13 +982,26 @@ export function ResultsClient({ campaignId }: { campaignId: string }) {
     void loadCampaign();
   }, [campaignId]);
 
+  useEffect(() => {
+    if (!campaign) return;
+    if (window.localStorage.getItem(RESULTS_READY_TOAST_KEY)) return;
+
+    window.localStorage.setItem(RESULTS_READY_TOAST_KEY, "1");
+    showToast("Your campaign pack is ready 🎉 — every section is copyable and exportable.", "success");
+  }, [campaign]);
+
   const scoreColor = useMemo(() => {
     if (!campaign) return "var(--color-text-secondary)";
     return scoreToColor(campaign.commerce_scores.status);
   }, [campaign]);
 
   const platformKeys = useMemo(
-    () => (campaign ? Object.keys(campaign.generated_content).filter(isPlatformKey) : []),
+    () => {
+      if (!campaign) return [];
+      const fromOffer = campaign.offer_data.platforms.filter(isPlatformKey);
+      const fromContent = Object.keys(campaign.generated_content).filter(isPlatformKey);
+      return Array.from(new Set([...fromOffer, ...fromContent]));
+    },
     [campaign],
   );
 
@@ -919,7 +1018,7 @@ export function ResultsClient({ campaignId }: { campaignId: string }) {
   const missingPlatforms = useMemo(
     () => (
       campaign
-        ? campaign.offer_data.platforms.filter((platform) => !campaign.generated_content[platform])
+        ? campaign.offer_data.platforms.filter((platform) => isPlatformKey(platform) && !campaign.generated_content[platform])
         : []
     ),
     [campaign],
@@ -1227,7 +1326,7 @@ export function ResultsClient({ campaignId }: { campaignId: string }) {
               ["Price", `$${campaign.offer_data.price}`],
               ["CTA", campaign.offer_data.primaryCta],
               ["Tone", campaign.offer_data.brandTone],
-              ["Platforms", campaign.offer_data.platforms.map((p) => PLATFORM_LABELS[p]).join(", ")],
+              ["Platforms", campaign.offer_data.platforms.map((p) => PLATFORM_LABELS[p] ?? p).join(", ")],
               ["Created", new Date(campaign.created_at).toLocaleDateString()],
             ].map(([k, v]) => (
               <div key={k} className="data-row">
@@ -1286,7 +1385,7 @@ export function ResultsClient({ campaignId }: { campaignId: string }) {
               <div>
                 <span className="callout-label">Some outputs are missing</span>
                 <p className="callout-copy">
-                  Available sections are shown below. Retry to fill: {missingPlatforms.map((platform) => PLATFORM_LABELS[platform]).join(", ")}.
+                  Available sections are shown below. Retry to fill: {missingPlatforms.map((platform) => PLATFORM_LABELS[platform] ?? platform).join(", ")}.
                 </p>
               </div>
             </div>
@@ -1353,7 +1452,7 @@ export function ResultsClient({ campaignId }: { campaignId: string }) {
                   onClick={() => setActivePlatform(platform)}
                   className={`platform-tab${active ? " platform-tab-active" : ""}`}
                 >
-                  {PLATFORM_LABELS[platform]}
+                  {PLATFORM_LABELS[platform] ?? platform}
                 </button>
               );
             })}

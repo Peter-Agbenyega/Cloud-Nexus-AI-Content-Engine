@@ -16,14 +16,8 @@ import { GenerateRequestBody } from "@/lib/types";
 export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request);
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized", code: "AUTH_REQUIRED" },
-        { status: 401 },
-      );
-    }
 
-    const rateLimit = await checkRateLimit(getRateLimitIdentifier(request, user.id));
+    const rateLimit = await checkRateLimit(getRateLimitIdentifier(request, user?.id));
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: "Too many requests", code: "RATE_LIMITED", retryAfter: 60 },
