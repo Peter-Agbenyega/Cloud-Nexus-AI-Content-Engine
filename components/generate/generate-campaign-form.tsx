@@ -1464,15 +1464,20 @@ export function GenerateCampaignForm() {
     <div className="generate-shell page-enter">
       <ToastContainer toasts={toasts} />
       {onboardingStep > 0 && (
-        <div style={{ position: "fixed", right: "20px", bottom: "80px", zIndex: 60, width: "min(340px, calc(100vw - 40px))", background: "white", border: "1px solid #BAE6FD", borderRadius: "12px", padding: "18px", boxShadow: "0 18px 42px rgba(15,23,42,0.18)" }}>
-          <p style={{ margin: "0 0 10px", fontWeight: 800, color: "#075985", lineHeight: 1.4 }}>
-            {onboardingStep === 1 && "Welcome to Cloud Nexus AI Studio. Start here."}
+        <div className="studio-onboarding">
+          <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "var(--text-sm)", color: "#075985", lineHeight: 1.4 }}>
+            {onboardingStep === 1 && "Welcome to Cloud Nexus AI Studio"}
             {onboardingStep === 2 && "Paste a URL or describe your offer"}
-            {onboardingStep === 3 && "Your full campaign will be ready in 60 seconds"}
+            {onboardingStep === 3 && "Your campaign will be ready in 60 seconds"}
           </p>
-          <button type="button" className="btn-primary" onClick={advanceOnboarding} style={{ width: "100%", justifyContent: "center" }}>
-            {onboardingStep >= 3 ? "Got it" : "Next"}
-          </button>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button type="button" className="btn-primary" onClick={advanceOnboarding} style={{ flex: 1, justifyContent: "center", padding: "8px 14px", fontSize: "var(--text-sm)" }}>
+              {onboardingStep >= 3 ? "Got it" : "Next"}
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => { window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "1"); setOnboardingStep(0); }} style={{ fontSize: "var(--text-xs)", padding: "6px 8px" }}>
+              Skip
+            </button>
+          </div>
         </div>
       )}
       {upgradePrompt && (
@@ -1535,7 +1540,7 @@ export function GenerateCampaignForm() {
           })}
         </div>
 
-        <section style={{ marginBottom: "24px" }}>
+        <section style={{ marginBottom: "18px" }}>
           <div className="workflow-strip" aria-label="MVP Workflow">
             <span className="workflow-strip-label">Workflow</span>
             {WORKFLOW_STEPS.map((ws, i) => {
@@ -2453,8 +2458,8 @@ export function GenerateCampaignForm() {
           </div>
 
           <div className="studio-preview-card" style={{ background: "var(--color-surface-raised)" }}>
-            <p style={{ margin: "0 0 10px", fontSize: "var(--text-xs)", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text-muted)" }}>Brief Summary</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <p style={{ margin: "0 0 8px", fontSize: "var(--text-xs)", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text-muted)" }}>Brief Summary</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               {[
                 ["Offer", form.offerName || "—"],
                 ["Category", form.category],
@@ -2470,9 +2475,30 @@ export function GenerateCampaignForm() {
             </div>
           </div>
 
+          <div className="studio-preview-card" style={{ background: "var(--color-surface-raised)" }}>
+            <p style={{ margin: "0 0 8px", fontSize: "var(--text-xs)", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text-muted)" }}>What This Generates</p>
+            <div className="studio-outputs-list">
+              {[
+                ["Strategy Brief", "var(--color-primary)"],
+                ["Main Copy + Caption", "var(--color-primary)"],
+                ["AI Image Prompt", "var(--color-accent)"],
+                ["AI Video Prompt", "var(--color-accent)"],
+                ["Voiceover Script", "var(--color-warm)"],
+                ["Music Direction", "var(--color-success)"],
+                ["Review Checklist", "var(--color-success)"],
+                ["Export Package", "#64748B"],
+              ].map(([label, color]) => (
+                <div key={label} className="studio-outputs-item">
+                  <span className="studio-outputs-dot" style={{ background: color }} />
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {!canContinue && step < 4 && (
-            <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--color-warning-light)", border: "1px solid rgba(245,158,11,0.2)" }}>
-              <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "#92400E", lineHeight: 1.5 }}>{stepReadyText}</p>
+            <div className="studio-guidance">
+              <p>{stepReadyText}</p>
             </div>
           )}
         </aside>
@@ -2485,18 +2511,22 @@ export function GenerateCampaignForm() {
             onClick={previousStep}
             disabled={step === 1 || isBusy}
             className="btn-secondary"
-            style={{ padding: "10px 20px" }}
+            style={{ padding: "9px 18px", fontSize: "var(--text-sm)" }}
           >
             ← Back
           </button>
 
-          <span className="studio-bottom-hint">
-            {isBusy ? loadingMsg : (canContinue ? `Step ${step} of 4 — ${STEP_META[step - 1].heading}` : stepReadyText)}
+          <span className="studio-bottom-hint" style={{ textAlign: "center" }}>
+            {isBusy
+              ? loadingMsg
+              : canContinue
+                ? <><strong>Step {step}</strong> of 4 — {STEP_META[step - 1].heading}</>
+                : <span style={{ color: "#92400E" }}>{stepReadyText}</span>}
           </span>
 
           <div className="studio-bottom-actions">
             {step < 4 ? (
-              <button type="button" onClick={nextStep} disabled={!canContinue} className="btn-primary" style={{ padding: "10px 24px" }}>
+              <button type="button" onClick={nextStep} disabled={!canContinue} className="btn-primary" style={{ padding: "9px 22px", fontSize: "var(--text-sm)" }}>
                 Continue →
               </button>
             ) : (
@@ -2508,7 +2538,7 @@ export function GenerateCampaignForm() {
                 style={{ justifyContent: "center" }}
               >
                 {isBusy && <span className="spinner" aria-hidden="true" />}
-                {isBusy ? loadingMsg : "Generate My Campaign Pack →"}
+                {isBusy ? loadingMsg : "Generate Campaign Pack →"}
               </button>
             )}
           </div>
