@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { AlertCircle, CalendarDays, Check, ImageIcon, LayoutPanelTop, Mail, ShoppingBag, Sparkles, Target, Video, WandSparkles } from "lucide-react";
+import { AlertCircle, CalendarDays, Check, ChevronDown, ChevronUp, ImageIcon, LayoutPanelTop, Mail, ShoppingBag, Sparkles, Target, Video, WandSparkles } from "lucide-react";
 
 import { autoFillForm, buildReliableFormPayload, inferCTA, inferPlatforms } from "@/lib/autoFill";
 import { INITIAL_FORM_STATE, PLATFORM_LABELS } from "@/lib/constants";
@@ -1448,13 +1448,25 @@ export function GenerateCampaignForm() {
     return () => window.clearTimeout(timer);
   }, [router, searchParams]);
 
+  const [conversationOpen, setConversationOpen] = useState(false);
+
+  const WORKFLOW_STEPS = [
+    { label: "Idea", doneAt: 2 },
+    { label: "Brand", doneAt: 3 },
+    { label: "Brief", doneAt: 4 },
+    { label: "Package", doneAt: 5 },
+    { label: "Image", doneAt: 5 },
+    { label: "Video", doneAt: 5 },
+    { label: "Export", doneAt: 5 },
+  ];
+
   return (
     <div className="generate-shell page-enter">
       <ToastContainer toasts={toasts} />
       {onboardingStep > 0 && (
-        <div style={{ position: "fixed", right: "20px", bottom: "20px", zIndex: 60, width: "min(340px, calc(100vw - 40px))", background: "white", border: "1px solid #BAE6FD", borderRadius: "8px", padding: "16px", boxShadow: "0 18px 42px rgba(15,23,42,0.18)" }}>
+        <div style={{ position: "fixed", right: "20px", bottom: "80px", zIndex: 60, width: "min(340px, calc(100vw - 40px))", background: "white", border: "1px solid #BAE6FD", borderRadius: "12px", padding: "18px", boxShadow: "0 18px 42px rgba(15,23,42,0.18)" }}>
           <p style={{ margin: "0 0 10px", fontWeight: 800, color: "#075985", lineHeight: 1.4 }}>
-            {onboardingStep === 1 && "Welcome to Cloud Nexus AI Studio. Start here →"}
+            {onboardingStep === 1 && "Welcome to Cloud Nexus AI Studio. Start here."}
             {onboardingStep === 2 && "Paste a URL or describe your offer"}
             {onboardingStep === 3 && "Your full campaign will be ready in 60 seconds"}
           </p>
@@ -1465,8 +1477,8 @@ export function GenerateCampaignForm() {
       )}
       {upgradePrompt && (
         <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
-          <div style={{ width: "100%", maxWidth: "460px", background: "white", borderRadius: "8px", padding: "22px", boxShadow: "0 24px 70px rgba(15,23,42,0.22)" }}>
-            <h2 style={{ margin: "0 0 8px", fontSize: "22px" }}>Unlock {upgradePrompt.feature}</h2>
+          <div style={{ width: "100%", maxWidth: "460px", background: "white", borderRadius: "14px", padding: "24px", boxShadow: "0 24px 70px rgba(15,23,42,0.22)" }}>
+            <h2 style={{ margin: "0 0 8px", fontSize: "22px", fontWeight: 800 }}>Unlock {upgradePrompt.feature}</h2>
             <p style={{ margin: "0 0 8px", color: "var(--color-text-secondary)" }}>{upgradePrompt.limit}</p>
             <p style={{ margin: "0 0 18px", color: "#0F172A", fontWeight: 600 }}>{upgradePrompt.benefit}</p>
             <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -1477,15 +1489,19 @@ export function GenerateCampaignForm() {
         </div>
       )}
       <header className="app-nav">
-        <div className="app-nav-inner" style={{ maxWidth: "760px" }}>
+        <div className="app-nav-inner" style={{ maxWidth: "var(--studio-max)" }}>
           <Link href="/" className="nav-logo">Cloud Nexus AI</Link>
-          <Link href="/dashboard" style={{ fontSize: "13px", color: "var(--color-text-secondary)", fontWeight: 500 }}>
-            Dashboard
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>AI Studio</span>
+            <Link href="/dashboard" className="btn-ghost" style={{ fontSize: "var(--text-sm)" }}>
+              Dashboard
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="generate-main">
+      <div className="studio-layout">
+        <main className="studio-form-col">
         <div className="stepper">
           {STEP_LABELS.map((label, index) => {
             const currentStep = index + 1;
@@ -1521,8 +1537,20 @@ export function GenerateCampaignForm() {
 
         <section style={{ marginBottom: "24px" }}>
           <div className="workflow-strip" aria-label="MVP Workflow">
-            <span className="workflow-strip-label">MVP Workflow</span>
-            <span className="workflow-strip-copy">Idea → Brand Context → Content Brief → Content Package → Image Prompt → Video Prompt → Export</span>
+            <span className="workflow-strip-label">Workflow</span>
+            {WORKFLOW_STEPS.map((ws, i) => {
+              const isDone = step >= ws.doneAt;
+              const isActive = (step === 1 && i === 0) || (step === 2 && i === 1) || (step === 3 && i === 2) || (step === 4 && i === 3);
+              return (
+                <span key={ws.label} style={{ display: "contents" }}>
+                  <span className={`workflow-chip ${isDone ? "workflow-chip-done" : isActive ? "workflow-chip-active" : "workflow-chip-upcoming"}`}>
+                    {isDone && <Check style={{ width: "10px", height: "10px" }} aria-hidden="true" />}
+                    {ws.label}
+                  </span>
+                  {i < WORKFLOW_STEPS.length - 1 && <span className="workflow-chip-arrow" aria-hidden="true">›</span>}
+                </span>
+              );
+            })}
           </div>
           <p className="step-header-kicker">
             Step {step} of 4
@@ -1533,20 +1561,37 @@ export function GenerateCampaignForm() {
           <p className="step-header-copy">
             {STEP_META[step - 1].sub}
           </p>
-          <div className="callout callout-subtle">
-            <span className="callout-label">Guide</span>
-            <p className="callout-copy">{STEP_META[step - 1].required}</p>
-          </div>
         </section>
 
-        <ConversationAssist
-          form={form}
-          onApplySuggestion={applyConversationSuggestion}
-          onSwitchToForm={() => {
-            setStep(1);
-            formStartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-        />
+        <button
+          type="button"
+          className="conversation-toggle-bar"
+          onClick={() => setConversationOpen((c) => !c)}
+          aria-expanded={conversationOpen}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Sparkles style={{ width: "14px", height: "14px", color: "var(--color-primary)" }} aria-hidden="true" />
+            <span style={{ fontWeight: 700, fontSize: "var(--text-sm)", color: "#0F172A" }}>AI Assistant</span>
+            <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>Describe your offer in conversation</span>
+          </div>
+          {conversationOpen
+            ? <ChevronUp style={{ width: "14px", height: "14px", color: "var(--color-text-muted)" }} aria-hidden="true" />
+            : <ChevronDown style={{ width: "14px", height: "14px", color: "var(--color-text-muted)" }} aria-hidden="true" />}
+        </button>
+
+        {conversationOpen && (
+          <div style={{ marginBottom: "20px" }}>
+            <ConversationAssist
+              form={form}
+              onApplySuggestion={applyConversationSuggestion}
+              onSwitchToForm={() => {
+                setStep(1);
+                setConversationOpen(false);
+                formStartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            />
+          </div>
+        )}
 
         <div ref={formStartRef} />
 
@@ -2376,51 +2421,82 @@ export function GenerateCampaignForm() {
                 const active = streamProgress >= (index === 0 ? 0 : STREAM_STAGES[index - 1].threshold);
                 const complete = streamProgress >= stage.threshold;
                 return (
-                  <div key={stage.label} style={{ display: "flex", alignItems: "center", gap: "8px", color: active ? "#075985" : "#94A3B8", fontSize: "13px", fontWeight: active ? 700 : 500 }}>
+                  <div key={stage.label} style={{ display: "flex", alignItems: "center", gap: "8px", color: active ? "#075985" : "#94A3B8", fontSize: "var(--text-sm)", fontWeight: active ? 700 : 500 }}>
                     <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: complete ? "#0EA5E9" : active ? "#7DD3FC" : "#CBD5E1" }} />
                     <span>Stage {index + 1}: {stage.label}</span>
                   </div>
                 );
               })}
             </div>
-            <pre style={{ margin: 0, minHeight: "140px", maxHeight: "260px", overflow: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", background: "white", border: "1px solid #E0F2FE", borderRadius: "8px", padding: "14px", color: "#0F172A", fontSize: "13px", lineHeight: 1.6 }}>
+            <pre style={{ margin: 0, minHeight: "140px", maxHeight: "260px", overflow: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", background: "white", border: "1px solid #E0F2FE", borderRadius: "8px", padding: "14px", color: "#0F172A", fontSize: "var(--text-sm)", lineHeight: 1.6 }}>
               {streamedText || "Preparing the first strategy tokens..."}
             </pre>
           </div>
         )}
+      </main>
 
-        <div className="card live-preview" style={{ marginTop: "24px" }}>
-          <p className="lbl" style={{ marginBottom: "10px" }}>Live Preview</p>
-          <div className="live-preview-grid">
-            <div>
-              <p className="script-block-label">Headline Preview</p>
-              <p className="live-preview-copy">{livePreview.headline}</p>
+        <aside className="studio-preview-col">
+          <div className="studio-preview-card">
+            <p className="studio-preview-card-title">Live Preview</p>
+            <div className="studio-preview-section">
+              <p className="studio-preview-label">Headline</p>
+              <p className="studio-preview-text">{livePreview.headline}</p>
             </div>
-            <div>
-              <p className="script-block-label">Hook Preview</p>
-              <p className="live-preview-copy">{livePreview.hook}</p>
+            <div className="studio-preview-section">
+              <p className="studio-preview-label">Hook</p>
+              <p className="studio-preview-text">{livePreview.hook}</p>
             </div>
-            <div>
-              <p className="script-block-label">CTA Preview</p>
-              <p className="live-preview-copy">{livePreview.cta}</p>
+            <div className="studio-preview-section" style={{ marginBottom: 0 }}>
+              <p className="studio-preview-label">CTA</p>
+              <p className="studio-preview-text" style={{ fontWeight: 600, color: "var(--color-primary)" }}>{livePreview.cta}</p>
             </div>
           </div>
-        </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "32px", paddingTop: "20px", borderTop: "1px solid var(--color-border-light)" }}>
-          <div className="generate-actions">
-            <button
-              type="button"
-              onClick={previousStep}
-              disabled={step === 1 || isBusy}
-              className="btn-ghost"
-              style={{ padding: "8px 0" }}
-            >
-              ← Back
-            </button>
+          <div className="studio-preview-card" style={{ background: "var(--color-surface-raised)" }}>
+            <p style={{ margin: "0 0 10px", fontSize: "var(--text-xs)", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text-muted)" }}>Brief Summary</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {[
+                ["Offer", form.offerName || "—"],
+                ["Category", form.category],
+                ["Audience", form.targetAudience ? form.targetAudience.split(" ").slice(0, 6).join(" ") + (form.targetAudience.split(" ").length > 6 ? "..." : "") : "—"],
+                ["Tone", form.brandTone],
+                ["Platforms", form.platforms.length > 0 ? `${form.platforms.length} selected` : "—"],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
+                  <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>{k}</span>
+                  <span style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "#334155", textAlign: "right" }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
+          {!canContinue && step < 4 && (
+            <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--color-warning-light)", border: "1px solid rgba(245,158,11,0.2)" }}>
+              <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "#92400E", lineHeight: 1.5 }}>{stepReadyText}</p>
+            </div>
+          )}
+        </aside>
+      </div>
+
+      <div className="studio-bottom-bar">
+        <div className="studio-bottom-inner">
+          <button
+            type="button"
+            onClick={previousStep}
+            disabled={step === 1 || isBusy}
+            className="btn-secondary"
+            style={{ padding: "10px 20px" }}
+          >
+            ← Back
+          </button>
+
+          <span className="studio-bottom-hint">
+            {isBusy ? loadingMsg : (canContinue ? `Step ${step} of 4 — ${STEP_META[step - 1].heading}` : stepReadyText)}
+          </span>
+
+          <div className="studio-bottom-actions">
             {step < 4 ? (
-              <button type="button" onClick={nextStep} disabled={!canContinue} className="btn-primary">
+              <button type="button" onClick={nextStep} disabled={!canContinue} className="btn-primary" style={{ padding: "10px 24px" }}>
                 Continue →
               </button>
             ) : (
@@ -2436,12 +2512,8 @@ export function GenerateCampaignForm() {
               </button>
             )}
           </div>
-
-          <p style={{ margin: 0, fontSize: "12px", color: "var(--color-text-muted)", lineHeight: 1.5 }}>
-            {isBusy ? loadingMsg : stepReadyText}
-          </p>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

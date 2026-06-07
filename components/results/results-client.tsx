@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Download, Loader2, RefreshCcw, Save } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, ClipboardCopy, Download, ImageIcon, Loader2, Mic, Music, RefreshCcw, Save, Video } from "lucide-react";
 
 import { analyzeCampaign } from "@/lib/analysis";
 import {
@@ -115,6 +115,21 @@ function formatContentBriefForCopy(brief: ContentBrief) {
   ].join("\n\n");
 }
 
+function StudioCopyButton({ label, value, onCopy, copyState }: { label: string; value: string; onCopy: (l: string, v: string) => void; copyState: string | null }) {
+  const copied = copyState === label;
+  return (
+    <button
+      type="button"
+      className={`copy-btn${copied ? " copied" : ""}`}
+      onClick={() => void onCopy(label, value)}
+      style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+    >
+      <ClipboardCopy style={{ width: "12px", height: "12px" }} aria-hidden="true" />
+      {copied ? "Copied" : "Copy Prompt"}
+    </button>
+  );
+}
+
 const UniversalPackageRenderer = memo(function UniversalPackageRenderer({
   contentBrief,
   contentPackage,
@@ -129,7 +144,7 @@ const UniversalPackageRenderer = memo(function UniversalPackageRenderer({
   if (!contentBrief && !contentPackage) return null;
 
   return (
-    <section style={{ display: "grid", gap: "12px", marginBottom: "16px" }}>
+    <section style={{ display: "grid", gap: "16px", marginBottom: "20px" }}>
       {contentBrief && (
         <ContentCard
           title="Content Brief"
@@ -191,32 +206,121 @@ const UniversalPackageRenderer = memo(function UniversalPackageRenderer({
             </ContentCard>
           </div>
 
-          {[
-            ["AI Image Prompt", contentPackage.aiImagePrompt],
-            ["AI Video Prompt", contentPackage.aiVideoPrompt],
-            ["Voiceover Script", contentPackage.voiceoverScript],
-            ["Music Prompt", contentPackage.musicPrompt],
-          ].map(([title, value]) => (
-            <ContentCard key={title} title={title} copyText={value} onCopy={onCopy} copyState={copyState}>
-              <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", background: "#0F172A", color: "#E2E8F0", borderRadius: "8px", padding: "12px", fontSize: "12px", lineHeight: 1.6 }}>
-                {value}
-              </pre>
-            </ContentCard>
-          ))}
-
-          <ContentCard
-            title="Human Review Checklist"
-            copyText={contentPackage.humanReviewChecklist.map((item, index) => `${index + 1}. ${item}`).join("\n")}
-            onCopy={onCopy}
-            copyState={copyState}
-          >
-            {contentPackage.humanReviewChecklist.map((item) => (
-              <div key={item} className="proof-item">
-                <span className="proof-dot" />
-                <span>{item}</span>
+          {/* ─── AI Image Canvas ─────────────────────────────────── */}
+          {contentPackage.aiImagePrompt && (
+            <div className="studio-section">
+              <div className="studio-section-header">
+                <div className="studio-section-title">
+                  <span className="studio-section-icon studio-section-icon-blue">
+                    <ImageIcon style={{ width: "16px", height: "16px" }} aria-hidden="true" />
+                  </span>
+                  AI Image Canvas
+                </div>
+                <StudioCopyButton label="AI Image Prompt" value={contentPackage.aiImagePrompt} onCopy={onCopy} copyState={copyState} />
               </div>
-            ))}
-          </ContentCard>
+              <div className="studio-section-body">
+                <pre className="studio-prompt-card">{contentPackage.aiImagePrompt}</pre>
+                <div className="studio-canvas-placeholder">
+                  <div className="studio-canvas-icon">
+                    <ImageIcon style={{ width: "22px", height: "22px" }} aria-hidden="true" />
+                  </div>
+                  <p className="studio-canvas-label">Image Canvas</p>
+                  <p className="studio-canvas-hint">Use the prompt above with your preferred AI image generator. Preview will appear here in a future update.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─── AI Video Studio ─────────────────────────────────── */}
+          {contentPackage.aiVideoPrompt && (
+            <div className="studio-section">
+              <div className="studio-section-header">
+                <div className="studio-section-title">
+                  <span className="studio-section-icon studio-section-icon-indigo">
+                    <Video style={{ width: "16px", height: "16px" }} aria-hidden="true" />
+                  </span>
+                  AI Video Studio
+                </div>
+                <StudioCopyButton label="AI Video Prompt" value={contentPackage.aiVideoPrompt} onCopy={onCopy} copyState={copyState} />
+              </div>
+              <div className="studio-section-body">
+                <pre className="studio-prompt-card">{contentPackage.aiVideoPrompt}</pre>
+                <div className="studio-canvas-placeholder">
+                  <div className="studio-canvas-icon">
+                    <Video style={{ width: "22px", height: "22px" }} aria-hidden="true" />
+                  </div>
+                  <p className="studio-canvas-label">Video Studio</p>
+                  <p className="studio-canvas-hint">Use the prompt above with your preferred AI video tool. Preview will appear here in a future update.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Voiceover Studio ─────────────────────────────────── */}
+          {contentPackage.voiceoverScript && (
+            <div className="studio-section">
+              <div className="studio-section-header">
+                <div className="studio-section-title">
+                  <span className="studio-section-icon studio-section-icon-warm">
+                    <Mic style={{ width: "16px", height: "16px" }} aria-hidden="true" />
+                  </span>
+                  Voiceover Studio
+                </div>
+                <StudioCopyButton label="Voiceover Script" value={contentPackage.voiceoverScript} onCopy={onCopy} copyState={copyState} />
+              </div>
+              <div className="studio-section-body">
+                <p style={{ margin: 0, fontSize: "var(--text-base)", lineHeight: 1.7, color: "#1E293B", whiteSpace: "pre-wrap" }}>{contentPackage.voiceoverScript}</p>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Music Prompt Studio ─────────────────────────────── */}
+          {contentPackage.musicPrompt && (
+            <div className="studio-section">
+              <div className="studio-section-header">
+                <div className="studio-section-title">
+                  <span className="studio-section-icon studio-section-icon-green">
+                    <Music style={{ width: "16px", height: "16px" }} aria-hidden="true" />
+                  </span>
+                  Music Prompt Studio
+                </div>
+                <StudioCopyButton label="Music Prompt" value={contentPackage.musicPrompt} onCopy={onCopy} copyState={copyState} />
+              </div>
+              <div className="studio-section-body">
+                <pre className="studio-prompt-card">{contentPackage.musicPrompt}</pre>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Human Review Checklist ──────────────────────────── */}
+          {contentPackage.humanReviewChecklist && contentPackage.humanReviewChecklist.length > 0 && (
+            <div className="studio-section">
+              <div className="studio-section-header">
+                <div className="studio-section-title">
+                  <span className="studio-section-icon studio-section-icon-green">
+                    <Check style={{ width: "16px", height: "16px" }} aria-hidden="true" />
+                  </span>
+                  Human Review Checklist
+                </div>
+                <StudioCopyButton
+                  label="Review Checklist"
+                  value={contentPackage.humanReviewChecklist.map((item, index) => `${index + 1}. ${item}`).join("\n")}
+                  onCopy={onCopy}
+                  copyState={copyState}
+                />
+              </div>
+              <div className="studio-section-body">
+                {contentPackage.humanReviewChecklist.map((item, index) => (
+                  <div key={`checklist-${index}`} className="studio-checklist-item">
+                    <span className="studio-checklist-check">
+                      <Check style={{ width: "12px", height: "12px" }} aria-hidden="true" />
+                    </span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </section>

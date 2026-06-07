@@ -21,9 +21,9 @@ const features = [
   },
   {
     icon: FileStack,
-    title: "One brief, full pack",
+    title: "One brief, full studio pack",
     description:
-      "A single offer brief produces TikTok scripts, Meta ad variants, product page copy, email, and a landing page — all aligned to the same strategy.",
+      "A single offer brief produces TikTok scripts, Meta ads, image prompts, video prompts, voiceover scripts, music direction, and a landing page — all aligned to the same strategy.",
   },
 ];
 
@@ -158,10 +158,10 @@ export default function Home() {
           <div className="page-section">
             <div className="hero-grid">
               <div style={{ textAlign: "left" }} className="max-md:text-center max-md:mx-auto">
-                <span className="hero-badge">Commerce-First AI Campaign Engine</span>
+                <span className="hero-badge">Commerce-First AI Studio</span>
                 <h1 className="hero-headline">Create content that sells. Not just content.</h1>
                 <p className="hero-copy">
-                  Paste any URL. Get a full campaign in 60 seconds. One strategy pass produces a launch-ready pack across every channel.
+                  Paste any URL. Get AI content, image prompts, video prompts, voiceover, music direction, and an export-ready campaign package — in 60 seconds.
                 </p>
 
                 <div className="hero-actions">
@@ -182,7 +182,7 @@ export default function Home() {
                     { platform: "Facebook / Meta", detail: "Ad variants for paid traffic" },
                     { platform: "Video Concepts", detail: "Scripts · scenes · shot lists" },
                     { platform: "30-Day Calendar", detail: "A full month planned" },
-                    { platform: "Creative Prompts", detail: "Image and video prompts" },
+                    { platform: "Creative Studio", detail: "Image, video, voiceover, music" },
                   ].map(({ platform, detail }) => (
                     <div key={platform} className="hero-preview-item">
                       <strong>{platform}</strong>
@@ -196,7 +196,7 @@ export default function Home() {
                     Strategy Brief Included
                   </p>
                   <p style={{ margin: 0, fontSize: "14px", color: "#0F172A" }}>
-                    Positioning, top angles, objections, hooks, and channel priority before content generation starts.
+                    Positioning, top angles, objections, hooks, and channel priority — plus image, video, voiceover, and music prompts.
                   </p>
                 </div>
               </div>
